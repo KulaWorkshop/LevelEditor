@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Kula Workshop Level Editor</title>
+    <meta name="author" content="Murphy">
+    <meta name="description" content="Create and edit level files from and for Kula World.">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="css.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+</head>
+
+<body>
+    <div id="menu">
+        <div id="menuBar">
+            <img id="exportLevel" src="ui/export.png">
+            <img id="openLevel" src="ui/open.png">
+            <img id="addBlock" src="ui/addblock.png" style="margin-left: 12px;">
+            <img id="subBlock" src="ui/removeblock.png">
+            <img id="selTile" src="ui/tile.png" style="margin-left: 12px;">
+            <img id="selFire" src="ui/fire.png">
+            <img id="selIce" src="ui/ice.png">
+            <img id="selInvis" src="ui/invisible.png">
+            <img id="selAcid" src="ui/acid.png">
+            <img id="bound" src="ui/Bound.png" style="margin-left: 12px;">
+            <img id="selBound" src="ui/SelBound.png">
+            <img id="noBound" src="ui/No Bound.png">
+            <input type="file" id="browseOpen" style="display:none;">
+        </div>
+        <div id="itemBar" style="filter:grayscale(1);display:none;">
+            <div class="blockGroup" id="blockChoice" style="border-right:1px solid #404040;padding-right: 22px;margin-right: 11px;">
+                <p style="text-decoration:underline">Block</p>
+                <div style="background-image: url(./textures/hiro/tile1.png);">
+                    <img height="64" style="display: none;">
+                </div>
+                <select id="blockSelect">
+                    <option value="0">Normal</option>
+                    <option value="1">Fire</option>
+                    <option value="2">Ice</option>
+                    <option value="3">Invisible</option>
+                    <option value="4">Acid</option>
+                    <option value="6">Crumbling</option>
+                    <!-- <option value="7">Flashing</option>
+                    <option value="5">Moving</option>
+                    <option value="8">Laser</option> -->
+                </select>
+            </div>
+            <div id="averageBlock">
+                <div class="blockGroup">
+                    <p style="text-decoration:underline;text-decoration-color: red;">Positive X</p>
+                    <div style="background-image: url(./textures/hiro/tile1.png);">
+                        <img height="64" style="display: none;">
+                    </div>
+                    <select id="posX">
+                        <option value="0">None</option>
+                        <option value="30">Player Spawn</option>
+                        <option value="31">Key</option>
+                        <option value="36a">Red Gem</option>
+                        <option value="36b">Green Gem</option>
+                        <option value="36c">Blue Gem</option>
+                        <option value="37a">Bronze Coin</option>
+                        <option value="37b">Blue Coin</option>
+                        <option value="37c">Gold Coin</option>
+                        <option value="46">Fruit</option>
+                        <option value="32">Lethargy Pill</option>
+                        <option value="33">Bounce Pill</option>
+                        <option value="34">Invincibility Pill</option>
+                        <option value="38">Sunglasses</option>
+                        <!-- <option value="5">Transporter</option>
+                        <option value="9">Button</option> -->
+                        <option value="7">Exit</option>
+                        <option value="26">Hidden Exit</option>
+                        <option value="8">Time Stop Patch</option>
+                        <option value="35">Timer Flip</option>
+                        <option value="10">Bounce Pad</option>
+                        <option value="11">Moving Spikes</option>
+                        <option value="12">Spikes</option>
+                        <option value="28">Arrow</option>
+                        <option value="50">Slow Star</option>
+                        <option value="52">Fast Star</option>
+                        <option value="51">Tire</option>
+                        <option value="53">Capture Pod</option>
+                        <option value="56">Captivator</option>
+                        <option value="42">Hedgehog</option>
+                        <option value="1">Fire Patch</option>
+                        <option value="2">Ice Patch</option>
+                        <option value="3">Invisible Patch</option>
+                        <option value="4">Acid Patch</option>
+                    </select>
+                </div>
+                <div class="blockGroup">
+                    <p style="text-decoration:underline;text-decoration-color: red;">Negative X</p>
+                    <div style="background-image: url(./textures/hiro/tile1.png);">
+                        <img height="64" style="display: none;">
+                    </div>
+                    <select id="negX">
+                        <option value="0">None</option>
+                        <option value="30">Player Spawn</option>
+                        <option value="31">Key</option>
+                        <option value="36a">Red Gem</option>
+                        <option value="36b">Green Gem</option>
+                        <option value="36c">Blue Gem</option>
+                        <option value="37a">Bronze Coin</option>
+                        <option value="37b">Blue Coin</option>
+                        <option value="37c">Gold Coin</option>
+                        <option value="46">Fruit</option>
+                        <option value="32">Lethargy Pill</option>
+                        <option value="33">Bounce Pill</option>
+                        <option value="34">Invincibility Pill</option>
+                        <option value="38">Sunglasses</option>
+                        <!-- <option value="5">Transporter</option>
+                        <option value="9">Button</option> -->
+                        <option value="7">Exit</option>
+                        <option value="26">Hidden Exit</option>
+                        <option value="8">Time Stop Patch</option>
+                        <option value="35">Timer Flip</option>
+                        <option value="10">Bounce Pad</option>
+                        <option value="11">Moving Spikes</option>
+                        <option value="12">Spikes</option>
+                        <option value="28">Arrow</option>
+                        <option value="50">Slow Star</option>
+                        <option value="52">Fast Star</option>
+                        <option value="51">Tire</option>
+                        <option value="53">Capture Pod</option>
+                        <option value="56">Captivator</option>
+                        <option value="42">Hedgehog</option>
+                        <option value="1">Fire Patch</option>
+                        <option value="2">Ice Patch</option>
+                        <option value="3">Invisible Patch</option>
+                        <option value="4">Acid Patch</option>
+                    </select>
+                </div>
+                <div class="blockGroup">
+                    <p style="text-decoration:underline;text-decoration-color: #00FF00;">Positive Y</p>
+                    <div style="background-image: url(./textures/hiro/tile1.png);">
+                        <img height="64" style="display: none;">
+                    </div>
+                    <select id="posY">
+                        <option value="0">None</option>
+                        <option value="30">Player Spawn</option>
+                        <option value="31">Key</option>
+                        <option value="36a">Red Gem</option>
+                        <option value="36b">Green Gem</option>
+                        <option value="36c">Blue Gem</option>
+                        <option value="37a">Bronze Coin</option>
+                        <option value="37b">Blue Coin</option>
+                        <option value="37c">Gold Coin</option>
+                        <option value="46">Fruit</option>
+                        <option value="32">Lethargy Pill</option>
+                        <option value="33">Bounce Pill</option>
+                        <option value="34">Invincibility Pill</option>
+                        <option value="38">Sunglasses</option>
+                        <!-- <option value="5">Transporter</option>
+                        <option value="9">Button</option> -->
+                        <option value="7">Exit</option>
+                        <option value="26">Hidden Exit</option>
+                        <option value="8">Time Stop Patch</option>
+                        <option value="35">Timer Flip</option>
+                        <option value="10">Bounce Pad</option>
+                        <option value="11">Moving Spikes</option>
+                        <option value="12">Spikes</option>
+                        <option value="28">Arrow</option>
+                        <option value="50">Slow Star</option>
+                        <option value="52">Fast Star</option>
+                        <option value="51">Tire</option>
+                        <option value="53">Capture Pod</option>
+                        <option value="56">Captivator</option>
+                        <option value="42">Hedgehog</option>
+                        <option value="1">Fire Patch</option>
+                        <option value="2">Ice Patch</option>
+                        <option value="3">Invisible Patch</option>
+                        <option value="4">Acid Patch</option>
+                    </select>
+                </div>
+                <div class="blockGroup">
+                    <p style="text-decoration:underline;text-decoration-color: #00FF00;">Negative Y</p>
+                    <div style="background-image: url(./textures/hiro/tile1.png);">
+                        <img height="64" style="display: none;">
+                    </div>
+                    <select id="negY">
+                        <option value="0">None</option>
+                        <option value="30">Player Spawn</option>
+                        <option value="31">Key</option>
+                        <option value="36a">Red Gem</option>
+                        <option value="36b">Green Gem</option>
+                        <option value="36c">Blue Gem</option>
+                        <option value="37a">Bronze Coin</option>
+                        <option value="37b">Blue Coin</option>
+                        <option value="37c">Gold Coin</option>
+                        <option value="46">Fruit</option>
+                        <option value="32">Lethargy Pill</option>
+                        <option value="33">Bounce Pill</option>
+                        <option value="34">Invincibility Pill</option>
+                        <option value="38">Sunglasses</option>
+                        <!-- <option value="5">Transporter</option>
+                        <option value="9">Button</option> -->
+                        <option value="7">Exit</option>
+                        <option value="26">Hidden Exit</option>
+                        <option value="8">Time Stop Patch</option>
+                        <option value="35">Timer Flip</option>
+                        <option value="10">Bounce Pad</option>
+                        <option value="11">Moving Spikes</option>
+                        <option value="12">Spikes</option>
+                        <option value="28">Arrow</option>
+                        <option value="50">Slow Star</option>
+                        <option value="52">Fast Star</option>
+                        <option value="51">Tire</option>
+                        <option value="53">Capture Pod</option>
+                        <option value="56">Captivator</option>
+                        <option value="42">Hedgehog</option>
+                        <option value="1">Fire Patch</option>
+                        <option value="2">Ice Patch</option>
+                        <option value="3">Invisible Patch</option>
+                        <option value="4">Acid Patch</option>
+                    </select>
+                </div>
+                <div class="blockGroup">
+                    <p style="text-decoration:underline;text-decoration-color: #0000FF;">Positive Z</p>
+                    <div style="background-image: url(./textures/hiro/tile1.png);">
+                        <img height="64" style="display: none;">
+                    </div>
+                    <select id="posZ">
+                        <option value="0">None</option>
+                        <option value="30">Player Spawn</option>
+                        <option value="31">Key</option>
+                        <option value="36a">Red Gem</option>
+                        <option value="36b">Green Gem</option>
+                        <option value="36c">Blue Gem</option>
+                        <option value="37a">Bronze Coin</option>
+                        <option value="37b">Blue Coin</option>
+                        <option value="37c">Gold Coin</option>
+                        <option value="46">Fruit</option>
+                        <option value="32">Lethargy Pill</option>
+                        <option value="33">Bounce Pill</option>
+                        <option value="34">Invincibility Pill</option>
+                        <option value="38">Sunglasses</option>
+                        <!-- <option value="5">Transporter</option>
+                        <option value="9">Button</option> -->
+                        <option value="7">Exit</option>
+                        <option value="26">Hidden Exit</option>
+                        <option value="8">Time Stop Patch</option>
+                        <option value="35">Timer Flip</option>
+                        <option value="10">Bounce Pad</option>
+                        <option value="11">Moving Spikes</option>
+                        <option value="12">Spikes</option>
+                        <option value="28">Arrow</option>
+                        <option value="50">Slow Star</option>
+                        <option value="52">Fast Star</option>
+                        <option value="51">Tire</option>
+                        <option value="53">Capture Pod</option>
+                        <option value="56">Captivator</option>
+                        <option value="42">Hedgehog</option>
+                        <option value="1">Fire Patch</option>
+                        <option value="2">Ice Patch</option>
+                        <option value="3">Invisible Patch</option>
+                        <option value="4">Acid Patch</option>
+                    </select>
+                </div>
+                <div class="blockGroup">
+                    <p style="text-decoration:underline;text-decoration-color: #0000FF;">Negative Z</p>
+                    <div style="background-image: url(./textures/hiro/tile1.png);">
+                        <img height="64" style="display: none;">
+                    </div>
+                    <select id="negZ">
+                        <option value="0">None</option>
+                        <option value="30">Player Spawn</option>
+                        <option value="31">Key</option>
+                        <option value="36a">Red Gem</option>
+                        <option value="36b">Green Gem</option>
+                        <option value="36c">Blue Gem</option>
+                        <option value="37a">Bronze Coin</option>
+                        <option value="37b">Blue Coin</option>
+                        <option value="37c">Gold Coin</option>
+                        <option value="46">Fruit</option>
+                        <option value="32">Lethargy Pill</option>
+                        <option value="33">Bounce Pill</option>
+                        <option value="34">Invincibility Pill</option>
+                        <option value="38">Sunglasses</option>
+                        <!-- <option value="5">Transporter</option>
+                        <option value="9">Button</option> -->
+                        <option value="7">Exit</option>
+                        <option value="26">Hidden Exit</option>
+                        <option value="8">Time Stop Patch</option>
+                        <option value="35">Timer Flip</option>
+                        <option value="10">Bounce Pad</option>
+                        <option value="11">Moving Spikes</option>
+                        <option value="12">Spikes</option>
+                        <option value="28">Arrow</option>
+                        <option value="50">Slow Star</option>
+                        <option value="52">Fast Star</option>
+                        <option value="51">Tire</option>
+                        <option value="53">Capture Pod</option>
+                        <option value="56">Captivator</option>
+                        <option value="42">Hedgehog</option>
+                        <option value="1">Fire Patch</option>
+                        <option value="2">Ice Patch</option>
+                        <option value="3">Invisible Patch</option>
+                        <option value="4">Acid Patch</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="editor.js" type="module"></script>
+</body>
+</html>

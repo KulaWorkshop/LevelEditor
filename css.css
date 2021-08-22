@@ -1,0 +1,129 @@
+@import url('https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap');
+
+*{
+    outline:none;
+    font-family: 'Roboto', sans-serif;
+}
+
+body,
+html {
+    margin: 0;
+    background-color: #4c75ff !important;
+    overflow: hidden;
+}
+
+#menu {
+    position: absolute;
+    display: block;
+}
+
+#myProgress {
+    width: 50vw;
+    background-color: #ffffff;
+    margin-left: 25vw;
+    position:absolute;
+    top: 50vh;
+}
+
+#myBar {
+    width: 400px;
+    height: 30px;
+    background-color: #4CAF50;
+}
+
+#menuBar {
+    user-select: none;
+    width:100vw;
+    height: 30px;
+    padding: 5px;
+    background: #303030;
+}
+
+#itemBar {
+    user-select: none;
+    width:100vw;
+    height: 100px;
+    padding: 5px;
+    background: #363636;
+}
+
+#averageBlock {
+    display:inline-block;
+}
+
+.blockGroup {
+    padding-left:11px;
+    padding-right:11px;
+    width: 64px!important;
+    height:100px!important;
+    display:inline-block;
+}
+
+.blockGroup div {
+    height: 64px;
+    width: 64px;
+}
+
+.blockGroup p {
+    color:#fff;
+    display:block;
+    font-size: 11px;
+    padding:0px;
+    margin:0px;
+    width: 64px;
+    font-weight: medium;
+    text-align: center;
+}
+
+.blockGroup select {
+    width:64px;
+    background-color: #555555;
+    font-size: 11px;
+    border:none;
+    color:white;
+    font-weight: medium;
+}
+
+#menuBar *{
+    user-select: none;
+}
+
+#menuBar img {
+    height: 29px;
+    border-bottom: 1px solid #303030;
+}
+
+#menuBar img:hover {
+    height: 29px;
+    border-bottom: 1px solid #4e4e4e;
+}
+
+#menuBar .selected {
+    height: 29px;
+    border-bottom: 1px solid #fff!important;
+}
+
+.formFu {
+    margin: 0px;
+    outline: none;
+    width:150px;
+    text-align: center;
+    font-size: 8px;
+    color:white;
+    padding: 0px;
+    border: white solid;
+    background: rgba(0, 0, 0, 0.22);
+}
+
+.formFu label {
+    margin-top: 100px;
+    width: 140px;
+    padding:4px 0px 4px 0px;
+    display:inline;
+}
+
+.formFu label:hover {
+    margin: 0px;
+    background: rgba(0, 0, 0, 0.05);
+
+}

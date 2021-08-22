@@ -1,0 +1,27 @@
+{
+  "name": "kula-workshop-level-editor",
+  "version": "1.0.0",
+  "description": "A simple to use tool to create, edit, and view Kula World Levels.",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "author": {
+    "name":"Kula Workshop",
+    "email":"contact@kulaworkshop.net"
+  },
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Kula-Workshop/KulaWorkshopLevelEditor/issues"
+  },
+  "homepage": "https://github.com/Kula-Workshop/KulaWorkshopLevelEditor#readme",
+  "devDependencies": {
+    "electron": "^12.0.6",
+    "electron-builder": "^22.11.7"
+  },
+  "build": {
+    "productName":"Kula Workshop Level Editor",
+    "appId": "kula.workshop.level.editor",
+    "asar":false
+  }
+}

@@ -779,7 +779,7 @@ function init() {
                         case 7:blockthang[positions[i]] = 12;break
                         case 8:blockthang[positions[i]] = 10;break
                         case 26:case 30:break
-                        default:blockthang[positions[i]] = 6;break
+                        default:if(block.userData.blockTile===0){console.log("why the fuck");blockthang[positions[i]] = 6;}break
                     }
                 }
             }

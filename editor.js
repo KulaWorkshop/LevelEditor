@@ -1,948 +1,1298 @@
-import * as THREE from './js/build/three.module.js'
-import { OrbitControls } from './js/OrbitControls.js'
-import { TransformControls } from './js/TransformControls.js'
+import * as THREE from "./js/build/three.module.js";
+import { OrbitControls } from "./js/OrbitControls.js";
+import { TransformControls } from "./js/TransformControls.js";
+import * as UI from "./UIManager.js";
+import * as LevelManager from "./LevelManager.js";
+import * as TextureManager from "./TextureManager.js";
 
-var scene=new THREE.Scene(), 
-    renderer = new THREE.WebGLRenderer( { antialias: true } ), 
-    camera = new THREE.PerspectiveCamera( 60, window.innerWidth / window.innerHeight, 0.1, 1000 ), 
-    orbit = new OrbitControls( camera, renderer.domElement ), 
-    transf = new TransformControls( camera, renderer.domElement ), 
-    canvas = renderer.domElement, 
-    canvasPosition = $(canvas).position(), 
-    rayCaster = new THREE.Raycaster(), 
-    mousePosition = new THREE.Vector2(), 
-    selectedBlock, 
-    currentWorldName = "hiro", 
-    level=new THREE.Group(), 
-    boundingBox = new THREE.LineSegments(new THREE.WireframeGeometry(new THREE.BoxBufferGeometry( 34, 34, 34, 1, 1, 1 ))),
-    boundingBoxState = true,
-    drag = false
+let worldNames = ["hiro", "hills", "inca", "arctic", "cowboy", "field", "atlantis", "haze", "mars", "hell"];
 
-function init() {
-    
-    function indian(dec){
-        let temp = dec.toString(16)
-        if(temp.length>=4){return [parseInt(temp.substring(0, 2),16),parseInt(temp.substring(2, 4),16)]}
-        else if(temp.length===2){return [parseInt(temp,16),0]}
-        else if(temp.length===1){return [parseInt(temp,16),0]}
-    }
+let scene = new THREE.Scene();
 
-    var saveByteArray = (function () {
-        var a = document.createElement("a")
-        document.body.appendChild(a)
-        a.style = "display: none"
-        return function (data, name) {
-            var blob = new Blob(data, {type: "octet/stream"}),
-                url = window.URL.createObjectURL(blob)
-            a.href = url
-            a.download = name
-            a.click()
-            window.URL.revokeObjectURL(url)
-        }
-    }())
+let currentLevel = {
+  blocks: new THREE.Group(),
+  time: 99,
+  secret: false,
+  far: false,
+};
+let blocksPlaced = 0;
+let selectedBlockType = 0;
+scene.add(currentLevel.blocks);
 
-    //Skybox
+let selectedAttribute = {
+  block: undefined,
+  item: undefined,
+  side: 0,
+  element: undefined,
+};
 
-    scene.background = new THREE.CubeTextureLoader()
-        .setPath('./skybox/'+currentWorldName)
-        .load([
-            '/pos-z.jpg',
-            '/neg-z.jpg',
-            '/pos-y.jpg',
-            '/neg-y.jpg',
-            '/neg-x.jpg',
-            '/pos-x.jpg'
-        ])
+let currentWorld = "HIRO";
+UI.InitializeUI();
+TextureManager.InitializeSkybox(scene, currentWorld);
+TextureManager.InitializeTextures(currentWorld);
 
-    boundingBox.position.set(16.5,16.5,16.5)
-    boundingBox.material.transparent = true
-    boundingBox.material.opacity = 0.2
-    scene.add(boundingBox,level)
+let renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setSize(window.innerWidth, window.innerHeight);
+let canvas = renderer.domElement;
+document.body.appendChild(canvas);
 
-    renderer.setPixelRatio( window.devicePixelRatio )
-    renderer.setSize( window.innerWidth, window.innerHeight )
-    document.body.appendChild(canvas)
+let camera = new THREE.PerspectiveCamera(
+  60,
+  window.innerWidth / window.innerHeight,
+  0.1,
+  1000
+);
+camera.position.set(20, 20, 40);
+camera.frustumCulled = false;
+let rayCaster = new THREE.Raycaster();
+let mousePosition = new THREE.Vector2();
 
-    camera.position.set( 16.5, 30, 70 )
+let controls = new OrbitControls(camera, renderer.domElement);
+controls.target.set(16.5, 16.5, 16.5);
+controls.minDistance = 0;
+controls.maxDistance = 500;
+controls.update();
+controls.addEventListener("change", render);
 
-    orbit.target.set(16.5,16.5,16.5)
-    orbit.minDistance = 0
-    orbit.maxDistance = 500
-    orbit.update()
-    orbit.addEventListener('change',render)
+let control = new TransformControls(camera, renderer.domElement);
+control.addEventListener("change", render);
+control.setMode("translate");
+control.setTranslationSnap(1);
+control.addEventListener("dragging-changed", function (event) {
+  controls.enabled = !event.value;
+});
+scene.add(control);
 
-    transf.addEventListener('change',render)
-    transf.setMode("translate")
-    transf.setTranslationSnap(1)
-    transf.addEventListener('dragging-changed', (e)=> {orbit.enabled=!e.value})
+let boundingBox = new THREE.LineSegments(
+  new THREE.EdgesGeometry(new THREE.BoxBufferGeometry(34, 34, 34, 1, 1, 1))
+);
+boundingBox.position.set(16.5, 16.5, 16.5);
+scene.add(boundingBox);
+let boundingBoxState = 0;
 
-    canvas.addEventListener("pointerdown",()=>{drag = false})
-    canvas.addEventListener("pointermove",()=>{drag = true})
-    
-    canvas.addEventListener("click",(e)=>{
-        if (!drag){
-            e.preventDefault()
-            mousePosition.x = ((e.clientX - canvasPosition.left) / canvas.width) * 2 - 1
-            mousePosition.y = -((e.clientY - canvasPosition.top) / canvas.height) * 2 + 1
-            rayCaster.setFromCamera(mousePosition, camera)
-            var intersects = rayCaster.intersectObjects(level.children, true)
+let drag = false;
+canvas.addEventListener("pointerdown", () => {
+  drag = false;
+  outOfBoundsCheck(control.object);
+});
+canvas.addEventListener("pointermove", () => {
+  drag = true;
+  outOfBoundsCheck(control.object);
+});
+canvas.addEventListener("click", (event) => onClick(event));
+window.addEventListener("resize", onWindowResize);
+window.addEventListener("keydown", (event) => onKeyPress(event));
 
-            if (intersects.length>0) {
-                let flag = false
-                for(let i = 0; i < intersects.length;i++){
-                    if(intersects[i].object.geometry.type === "BoxGeometry" && !flag) {
-                        transf.detach(transf.object)
-                        transf.attach(intersects[i].object)
-                        updateCommon()
-                        flag = true
-                    } else if (!flag)transf.detach(transf.object)
-                }
-            } else transf.detach(transf.object)
-            updateCommon()
-        }
+UI.open.onclick = () => UI.browse.click();
+UI.add.onclick = () => addBlock();
+UI.remove.onclick = () => removeBlock(control.object);
+UI.blocktypes.forEach(
+  (element, index) =>
+    (element.onclick = () => {
+      selectedBlockType = index;
+      UI.SetSelectedBlockType(index);
     })
+);
+UI.boundtypes.forEach(
+  (element, index) => (element.onclick = () => setBoundType(index))
+);
+UI.worlds.forEach(
+  (element) => (element.onclick = () => setWorld(element.getAttribute("id")))
+);
+UI.blockedits.forEach((element) =>
+  element.addEventListener("change", () =>
+    addItem(
+      control.object,
+      LevelManager.ReturnItem(element.value),
+      element.getAttribute("id")
+    )
+  )
+);
 
-    // world
+UI.browse.onchange = function () {
+  let fileReader = new FileReader();
+  if (this.files.length > 0) {
+    fileReader.readAsArrayBuffer(this.files[0]);
+    fileReader.onloadend = function (event) {
+      if (event.target.readyState == FileReader.DONE)
+        loadLevel(LevelManager.LoadLevel(event.target.result));
+    };
+  }
+  this.value = "";
+};
 
-    const loader = new THREE.TextureLoader().setPath('textures/' + currentWorldName + '/')
+UI.save.onclick = () => {
+  let a = document.createElement("a");
+  document.body.appendChild(a);
+  a.style = "display: none";
+  let url = window.URL.createObjectURL(
+    new Blob([new Uint16Array(LevelManager.WriteLevel(currentLevel))], {
+      type: "octet/stream",
+    })
+  );
+  a.href = url;
+  a.download = "LEVEL.kwl";
+  a.click();
+  window.URL.revokeObjectURL(url);
+};
 
-    function loadTx(name){
-        return {name:name,texture:loader.load(name)}
+UI.editblocktype.onchange = () => {
+  if (control.object === undefined) return;
+  let blockType = parseInt(UI.editblocktype.value);
+  control.object.userData["type"] = blockType;
+  if (blockType > 4) {
+    control.object.userData["items"] = [];
+    while (control.object.children.length)
+      control.object.remove(control.object.children[0]);
+  }
+  control.object.material = TextureManager.MapBlockTexture(control.object);
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+};
+
+UI.options.onclick = () => {
+  UI.editleveltime.value = currentLevel.time;
+  UI.editsecretlevel.checked = currentLevel.secret;
+  UI.editfar.checked = currentLevel.far;
+  UI.leveloptions.style.display = "block";
+};
+
+UI.blockselects.forEach(
+  (element) =>
+    (element.onclick = () => {
+      UI.blockselects.forEach(
+        (element) => (element.classList.remove("selected"))
+      );
+      element.classList.add("selected")
+      UI.UpdateMenuDisplay(control.object, currentWorld);
+    })
+);
+
+//Level Options
+UI.editleveltime.onchange = () => {
+  if (UI.editleveltime.value > 510) UI.editleveltime.value = 510;
+  if (UI.editleveltime.value < 0) UI.editleveltime.value = 0;
+  currentLevel.time = parseInt(UI.editleveltime.value);
+};
+
+UI.editsecretlevel.onchange = () =>
+  (currentLevel.secret = UI.editsecretlevel.checked);
+
+UI.editfar.onchange = () => (currentLevel.far = UI.editfar.checked);
+
+//Moving Block
+UI.editmovingconnection.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  let movingData = control.object.userData["moving"];
+  if (UI.editmovingconnection.innerText == "Detach") {
+    movingData.toPosition = new THREE.Vector3();
+    UI.UpdateMenuDisplay(control.object, currentWorld);
+    UI.DisplayAlert("error-alert", "Detached moving block.");
+    return;
+  }
+  selectedAttribute.block = control.object;
+  movingData.startingPosition = new THREE.Vector3(
+    BE(control.object.position.x * 2),
+    BE((LevelManager.ConvertYPosition(control.object.position.y) - 1) * 2),
+    BE(control.object.position.z * 2)
+  );
+  movingData.fromPosition = new THREE.Vector3(
+    control.object.position.x,
+    LevelManager.ConvertYPosition(control.object.position.y) - 1,
+    control.object.position.z
+  );
+  movingData.length = parseInt(UI.editmovinglength.value);
+  movingData.speed = parseInt(UI.editmovingspeed.value);
+  UI.editmovingconnection.innerText = "Cancel";
+  UI.DisplayAlert(
+    "info-alert",
+    "Select another block to attach the moving block to."
+  );
+};
+
+UI.editmovinglength.onchange = () =>
+  (control.object.userData["moving"].length = parseInt(
+    UI.editmovinglength.value
+  ));
+
+UI.editmovingspeed.onchange = () => {
+  if (UI.editmovingspeed.value > 510) UI.editmovingspeed.value = 510;
+  if (UI.editmovingspeed.value < 0) UI.editmovingspeed.value = 0;
+  control.object.userData["moving"].speed = parseInt(UI.editmovingspeed.value);
+};
+
+//Flashing Block
+UI.editflashingindex.onchange = () =>
+  (control.object.userData["flashing"].index = parseInt(
+    UI.editflashingindex.value
+  ));
+
+//Laser Block
+UI.editlaserconnection.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  let laserData = control.object.userData["laser"];
+  if (UI.editlaserconnection.innerText == "Detach") {
+    laserData.toPosition = new THREE.Vector3();
+    control.object.material = TextureManager.MapBlockTexture(control.object);
+    UI.UpdateMenuDisplay(control.object, currentWorld);
+    UI.DisplayAlert("error-alert", "Detached laser.");
+    return;
+  }
+  selectedAttribute.block = control.object;
+  laserData.fromPosition = new THREE.Vector3(
+    control.object.position.x,
+    LevelManager.ConvertYPosition(control.object.position.y) - 1,
+    control.object.position.z
+  );
+  UI.editlaserconnection.innerText = "Cancel";
+  UI.DisplayAlert("info-alert", "Select another block to attach the laser to.");
+};
+
+UI.editlasercolor.onchange = () => {
+  control.object.userData["laser"].color = parseInt(UI.editlasercolor.value);
+  control.object.material = TextureManager.MapLaserTexture(control.object);
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+};
+
+UI.editlaserenabled.onchange = () =>
+  (control.object.userData["laser"].enabled = parseInt(
+    UI.editlaserenabled.value
+  ));
+
+UI.editlaserpower.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  selectedAttribute.block = control.object;
+  selectedAttribute.element = UI.editlaserpower;
+  UI.editlaserpower.innerText = "Cancel";
+  UI.DisplayAlert(
+    "info-alert",
+    "Select another block to attach the laser power to."
+  );
+};
+
+//Transporter
+UI.edittransporterconnection.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  let sideIndex = 0;
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      sideIndex = index;
+  });
+  if (UI.edittransporterconnection.innerText == "Detach") {
+    control.object.userData["items"][sideIndex].toPosition = 65535;
+    UI.UpdateMenuDisplay(control.object, currentWorld);
+    UI.DisplayAlert("error-alert", "Detached transporter connection.");
+    return;
+  }
+  selectedAttribute.block = control.object;
+  selectedAttribute.item = control.object.userData["items"][sideIndex];
+  selectedAttribute.side = sideIndex;
+  UI.edittransporterconnection.innerText = "Cancel";
+  UI.DisplayAlert(
+    "info-alert",
+    "Select another block to attach the transporter to."
+  );
+};
+
+UI.edittransportercolor.onclick = () => {
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected")) {
+      control.object.userData["items"][index].varient = parseInt(
+        UI.edittransportercolor.value
+      );
+      addItem(
+        control.object,
+        control.object.userData["items"][index],
+        UI.blockedits[index].id
+      );
+    }
+  });
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+};
+
+UI.edittransporterenabled.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].state = parseInt(
+        UI.edittransporterenabled.value
+      );
+  });
+
+UI.edittransporterrotation.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].rotation = parseInt(
+        UI.edittransporterrotation.value
+      );
+  });
+
+UI.edittransporterpower.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  let sideIndex = 0;
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      sideIndex = index;
+  });
+  selectedAttribute.block = control.object;
+  selectedAttribute.item = control.object.userData["items"][sideIndex];
+  selectedAttribute.side = sideIndex;
+  selectedAttribute.element = UI.edittransporterpower;
+  UI.edittransporterpower.innerText = "Cancel";
+  UI.DisplayAlert(
+    "info-alert",
+    "Select another block to attach the transporter power to."
+  );
+};
+
+//Button
+UI.editbuttoncolor.onchange = () => {
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected")) {
+      control.object.userData["items"][index].varient = parseInt(
+        UI.editbuttoncolor.value
+      );
+      addItem(
+        control.object,
+        control.object.userData["items"][index],
+        UI.blockedits[index].id
+      );
+    }
+  });
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+};
+
+UI.editbuttonenabled.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].state = parseInt(
+        UI.editbuttonenabled.value
+      );
+  });
+
+UI.editbuttonpower1.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  let sideIndex = 0;
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      sideIndex = index;
+  });
+  selectedAttribute.block = control.object;
+  selectedAttribute.item = control.object.userData["items"][sideIndex];
+  selectedAttribute.side = sideIndex;
+  selectedAttribute.element = UI.editbuttonpower1;
+  UI.editbuttonpower1.innerText = "Cancel";
+  UI.DisplayAlert(
+    "info-alert",
+    "Select another block to attach the button to."
+  );
+};
+
+UI.editbuttonpower2.onclick = () => {
+  if (selectedAttribute.block !== undefined) {
+    clearAttribute();
+    return;
+  }
+  let sideIndex = 0;
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      sideIndex = index;
+  });
+  selectedAttribute.block = control.object;
+  selectedAttribute.item = control.object.userData["items"][sideIndex];
+  selectedAttribute.side = sideIndex;
+  selectedAttribute.element = UI.editbuttonpower2;
+  UI.editbuttonpower2.innerText = "Cancel";
+  UI.DisplayAlert(
+    "info-alert",
+    "Select another block to attach the button to."
+  );
+};
+
+//Moving Spike
+UI.editmovingspikeindex.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].varient = parseInt(
+        UI.editmovingspikeindex.value
+      );
+  });
+
+//Player Spawn
+UI.editplayerspawnrotation.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].rotation = parseInt(
+        UI.editplayerspawnrotation.value
+      );
+  });
+
+//Arrow
+UI.editarrowrotation.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].rotation = parseInt(
+        UI.editarrowrotation.value
+      );
+  });
+
+//Slow Star
+UI.editslowstarrotation.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].rotation = parseInt(
+        UI.editslowstarrotation.value
+      );
+  });
+
+//Tire
+UI.edittirerotation.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].rotation = parseInt(
+        UI.edittirerotation.value
+      );
+  });
+
+//Fast Star
+UI.editfaststarrotation.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].rotation = parseInt(
+        UI.editfaststarrotation.value
+      );
+  });
+
+//Captivator
+UI.editcaptivatorindex.onchange = () =>
+  UI.blockselects.forEach((element, index) => {
+    if (element.classList.contains("selected"))
+      control.object.userData["items"][index].varient = parseInt(
+        UI.editcaptivatorindex.value
+      );
+  });
+
+UI.blocksides.forEach(
+  (element, index) =>
+    (element.onclick = () => {
+      UI.blocksideselections.style.display = "none";
+      if (selectedAttribute.element == UI.editlaserpower) {
+        selectedAttribute.block.userData["laser"].power =
+          LevelManager.ConvertBlockCode(currentLevel, control.object, index);
+        UI.RemoveAlert("info-alert");
+        UI.DisplayAlert(
+          "success-alert",
+          "Successfully attached laser power to block!"
+        );
+        clearAttribute();
+        return;
+      }
+      switch (selectedAttribute.item.id) {
+        case 5:
+          if (selectedAttribute.element == UI.edittransporterpower) {
+            selectedAttribute.block.userData["items"][
+              selectedAttribute.side
+            ].power1 = LevelManager.ConvertBlockCode(
+              currentLevel,
+              control.object,
+              index
+            );
+            UI.RemoveAlert("info-alert");
+            UI.DisplayAlert(
+              "success-alert",
+              "Successfully attached transporter power to block!"
+            );
+          } else {
+            selectedAttribute.block.userData["items"][
+              selectedAttribute.side
+            ].toPosition = LevelManager.ConvertBlockCode(
+              currentLevel,
+              control.object,
+              index
+            );
+            UI.RemoveAlert("info-alert");
+            UI.DisplayAlert(
+              "success-alert",
+              "Successfully attached transporter to block!"
+            );
+          }
+          break;
+        case 9:
+          if (selectedAttribute.element == UI.editbuttonpower1)
+            selectedAttribute.block.userData["items"][
+              selectedAttribute.side
+            ].power1 = LevelManager.ConvertBlockCode(
+              currentLevel,
+              control.object,
+              index
+            );
+          else
+            selectedAttribute.block.userData["items"][
+              selectedAttribute.side
+            ].power2 = LevelManager.ConvertBlockCode(
+              currentLevel,
+              control.object,
+              index
+            );
+          UI.RemoveAlert("info-alert");
+          UI.DisplayAlert(
+            "success-alert",
+            "Successfully attached button to block!"
+          );
+          break;
+      }
+      clearAttribute();
+    })
+);
+
+window.onclick = function (event) {
+  if (event.target == UI.leveloptions) UI.leveloptions.style.display = "none";
+  if (event.target == UI.blocksideselections) {
+    UI.blocksideselections.style.display = "none";
+    clearAttribute();
+    UI.RemoveAlert("info-alert");
+    UI.DisplayAlert("error-alert", "Operation cancelled.");
+  }
+};
+
+function loadLevel(level) {
+  control.detach(control.object);
+  currentLevel.time = level.time;
+  currentLevel.secret = level.secret;
+  currentLevel.far = level.far;
+  currentLevel.blocks.children = [];
+  level.blocks.children.forEach((levelBlock) => {
+    let block = new THREE.Mesh(new THREE.BoxBufferGeometry());
+    block.position.set(
+      levelBlock.position.x,
+      levelBlock.position.y,
+      levelBlock.position.z
+    );
+    block.name = blocksPlaced;
+    block.userData = levelBlock.userData;
+    block.material = TextureManager.MapBlockTexture(block);
+    if (block.userData["items"].length > 0)
+      block.userData["items"].forEach((item, index) =>
+        addSprite(block, item, index)
+      );
+    if (block.userData["type"] === 8) {
+      block.userData["laser"].swapped = false;
+      let fromPosition = block.userData["laser"].fromPosition;
+      if (
+        block.position.x == fromPosition.x &&
+        block.position.y == LevelManager.ConvertYPosition(fromPosition.y + 1) &&
+        block.position.z == fromPosition.z
+      ) {
+        block.userData["laser"].swapped = true;
+      }
+      block.material = TextureManager.MapLaserTexture(block);
     }
 
-    let textureArray = [
-        //Tiles
-        [
-            loadTx('tile1.png'),
-            loadTx('tile2.png'),
-            loadTx('tile3.png'),
-            loadTx('tile4.png')
-        ],
-        //Special Tiles
-        loadTx('fire.png'),      //1 Fire
-        loadTx('ice.png'),       //2 Ice
-        loadTx('invisible.png'), //3 Invisible
-        loadTx('acid.png'),      //4 Acid
-        loadTx('crumble.png'),   //5 Crumble
-        //Item Shadows
-        loadTx('tileItem.png'),  //6 Tile Item
-        loadTx('iceItem.png'),   //7 Ice Item
-        //Spikes
-        loadTx('4spikes.png'),   //8 4 Spikes
-        loadTx('12spikes.png'),  //9 12 Spikes
-        //Other
-        loadTx('timestop.png'),  //10 Time Stop
-        loadTx('buttonbase.png'),//11 Button Base
-        loadTx('exit.png'),      //12 Exit
-        //<2 moving block sides
-        [
-            loadTx('cyborg1.png'),
-            loadTx('cyborg2.png')
-        ],
-        //>2 moving block sides/end
-        [
-            loadTx('robotEnd.png'),
-            loadTx('robotSide.png')
-        ],
-        //Lasers
-        [
-            loadTx('laser1.png'),
-            loadTx('laser2.png'),
-            loadTx('laser3.png'),
-            loadTx('laser4.png')
-        ],
-    ]
+    currentLevel.blocks.add(block);
+    blocksPlaced++;
+  });
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+  updateBoundingBox();
+}
 
-    function generateTexture(posX=0, negX=posX, posY=posX, negY=posX, posZ=posX, negZ=posX){
-        function genMat(type){
-            let texture, material
-            switch(type){
-                case 0:
-                    texture = textureArray[0][Math.floor(Math.random() * 4)]
-                    material = new THREE.MeshBasicMaterial( {map:texture.texture} )
-                    material.userData.textureName = texture.name
-                    return material
-                case 3:
-                    texture = textureArray[type]
-                    material = new THREE.MeshBasicMaterial( {map:texture.texture,opacity:0.5,transparent:true} )
-                    material.blending = THREE["AdditiveBlending"]
-                    material.userData.textureName = texture.name
-                    return material
-                case 16:
-                    texture = textureArray[0][Math.floor(Math.random() * 4)]
-                    material = new THREE.MeshBasicMaterial( {map:texture.texture,opacity:0.5,transparent:true} )
-                    material.userData.textureName = texture.name
-                    return material
-                default:
-                    texture = textureArray[type]
-                    material = new THREE.MeshBasicMaterial( {map:texture.texture} )
-                    material.userData.textureName = texture.name
-                    return material
+function setWorld(name) {
+  TextureManager.InitializeTextures(name);
+  TextureManager.InitializeSkybox(scene, name);
+  UI.SetWorld(name);
+  currentLevel.blocks.children.forEach((block) => {
+    if (block.userData["type"] === 8)
+      block.material = TextureManager.MapLaserTexture(block);
+    else block.material = TextureManager.MapBlockTexture(block);
+  });
+  UI.UpdateMenuDisplay(control.object, name);
+  currentWorld = name;
+}
+
+function addBlock() {
+  let block = new THREE.Mesh(new THREE.BoxBufferGeometry());
+  if (control.object === undefined) block.position.set(16, 16, 16);
+  else block.position.copy(control.object.position);
+  block.name = blocksPlaced;
+  block.userData = {
+    type: selectedBlockType,
+    items: [],
+    moving: {
+      startingPosition: new THREE.Vector3(),
+      fromPosition: new THREE.Vector3(),
+      toPosition: new THREE.Vector3(),
+      type: 0,
+      orientation: 0,
+      length: 1,
+      speed: 0,
+      id: 0,
+    },
+    flashing: { index: 0 },
+    laser: {
+      fromPosition: new THREE.Vector3(),
+      toPosition: new THREE.Vector3(),
+      swapped: true,
+      enabled: 1,
+      orientation: 0,
+      color: 0,
+      power: 65535,
+      id: 0,
+    },
+  };
+  block.material = TextureManager.MapBlockTexture(block);
+  currentLevel.blocks.add(block);
+  control.attach(block);
+  blocksPlaced++;
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+  updateBoundingBox();
+}
+
+function removeBlock(block) {
+  if (block === undefined) return;
+  control.detach(block);
+  currentLevel.blocks.remove(block);
+  if (currentLevel.blocks.children.length)
+    control.attach(
+      currentLevel.blocks.children[currentLevel.blocks.children.length - 1]
+    );
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+  updateBoundingBox();
+}
+
+function copyBlock(block) {
+  if (block === undefined) return;
+  let newBlock = block.clone();
+  if (control.object === undefined) newBlock.position.set(16, 16, 16);
+  else newBlock.position.copy(control.object.position);
+  newBlock.name = blocksPlaced;
+  currentLevel.blocks.add(newBlock);
+  control.attach(newBlock);
+  blocksPlaced++;
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+  updateBoundingBox();
+}
+
+function addItem(block, item, side) {
+  let sideIndex = 0;
+  switch (side) {
+    case "editPY":
+      sideIndex = 0;
+      break;
+    case "editPX":
+      sideIndex = 1;
+      break;
+    case "editPZ":
+      sideIndex = 2;
+      break;
+    case "editNZ":
+      sideIndex = 3;
+      break;
+    case "editNX":
+      sideIndex = 4;
+      break;
+    case "editNY":
+      sideIndex = 5;
+      break;
+  }
+  while (control.object.children.length)
+    control.object.remove(control.object.children[0]);
+  for (let i = 0; i < 6; i++) {
+    if (i === sideIndex) {
+      block.userData["items"][i] = item;
+      continue;
+    }
+    if (block.userData["items"][i] === undefined)
+      block.userData["items"][i] = LevelManager.ReturnItem("0");
+    addSprite(block, block.userData["items"][i], i);
+  }
+  addSprite(block, item, sideIndex);
+  block.material = TextureManager.MapBlockTexture(block);
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+}
+
+function addSprite(block, item, side) {
+  if (
+    item.id < 5 ||
+    item.id == 8 ||
+    item.id == 11 ||
+    item.id == 12 ||
+    block.userData["type"] > 4
+  )
+    return;
+  let spriteMap;
+  let sprite = new THREE.Sprite();
+  let groundOffset = 0.95;
+  switch (item.id) {
+    case 5:
+      if (item.varient == 0)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "a.png"
+        );
+      else if (item.varient == 1)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "b.png"
+        );
+      else if (item.varient == 2)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "c.png"
+        );
+      else
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "d.png"
+        );
+      groundOffset = 0.65;
+      break;
+    case 7:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      groundOffset = 0.85;
+      break;
+    case 9:
+      if (item.varient == 0)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "a.png"
+        );
+      else if (item.varient == 1)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "b.png"
+        );
+      else if (item.varient == 2)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "c.png"
+        );
+      else
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "d.png"
+        );
+      groundOffset = 0.6;
+      break;
+    case 10:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      groundOffset = 0.65;
+      break;
+    case 26:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      groundOffset = 0.85;
+      break;
+    case 28:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      groundOffset = 0.65;
+      break;
+    case 30:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      groundOffset = 0.75;
+      sprite.scale.set(0.9, 0.9, 0.9);
+      break;
+    case 36:
+      if (item.varient == 0)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "a.png"
+        );
+      else if (item.varient == 1)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "b.png"
+        );
+      else
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "c.png"
+        );
+      sprite.scale.set(0.7, 0.7, 0.7);
+      break;
+    case 37:
+      if (item.varient == 0)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "a.png"
+        );
+      else if (item.varient == 1)
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "b.png"
+        );
+      else
+        spriteMap = new THREE.TextureLoader().load(
+          "sprites/" + item.id + "c.png"
+        );
+      break;
+    case 43:
+    case 44:
+    case 45:
+    case 46:
+    case 47:
+      spriteMap = new THREE.TextureLoader().load("sprites/46.png");
+      break;
+    case 56:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      groundOffset = 1.3;
+      sprite.scale.set(0.8, 0.8, 0.8);
+      break;
+    default:
+      spriteMap = new THREE.TextureLoader().load("sprites/" + item.id + ".png");
+      break;
+  }
+  sprite.material = new THREE.SpriteMaterial({ map: spriteMap });
+  switch (side) {
+    case 0:
+      sprite.position.set(
+        sprite.position.x,
+        sprite.position.y + groundOffset,
+        sprite.position.z
+      );
+      block.add(sprite);
+      break;
+    case 1:
+      sprite.position.set(
+        sprite.position.x + groundOffset,
+        sprite.position.y,
+        sprite.position.z
+      );
+      sprite.material.rotation += 1.570796;
+      block.add(sprite);
+      break;
+    case 2:
+      sprite.position.set(
+        sprite.position.x,
+        sprite.position.y,
+        sprite.position.z + groundOffset
+      );
+      sprite.material.rotation += 1.570796;
+      block.add(sprite);
+      break;
+    case 3:
+      sprite.position.set(
+        sprite.position.x,
+        sprite.position.y,
+        sprite.position.z - groundOffset
+      );
+      sprite.material.rotation -= 1.570796;
+      block.add(sprite);
+      break;
+    case 4:
+      sprite.position.set(
+        sprite.position.x - groundOffset,
+        sprite.position.y,
+        sprite.position.z
+      );
+      sprite.material.rotation -= 1.570796;
+      block.add(sprite);
+      break;
+    case 5:
+      sprite.position.set(
+        sprite.position.x,
+        sprite.position.y - groundOffset,
+        sprite.position.z
+      );
+      sprite.material.rotation += 3.14159;
+      block.add(sprite);
+      break;
+  }
+}
+
+function outOfBoundsCheck(block) {
+  if (block === undefined) return;
+  let blockPosition = block.position;
+
+  block.remove(block.getObjectByName("ErrorBox"));
+  block.remove(block.getObjectByName("WarningBox"));
+
+  if (
+    blockPosition.x > 33 ||
+    blockPosition.x < 0 ||
+    blockPosition.y > 33 ||
+    blockPosition.y < 0 ||
+    blockPosition.z > 33 ||
+    blockPosition.z < 0
+  ) {
+    let errorBox = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxBufferGeometry(1, 1, 1, 1, 1, 1)),
+      new THREE.LineBasicMaterial({ color: 0xff0000, linewidth: 10 })
+    );
+    errorBox.name = "ErrorBox";
+    block.add(errorBox);
+    return;
+  }
+
+  if (
+    blockPosition.x > 32 ||
+    blockPosition.x < 1 ||
+    blockPosition.y > 32 ||
+    blockPosition.y < 1 ||
+    blockPosition.z > 32 ||
+    blockPosition.z < 1
+  ) {
+    let warningBox = new THREE.LineSegments(
+      new THREE.EdgesGeometry(new THREE.BoxBufferGeometry(1, 1, 1, 1, 1, 1)),
+      new THREE.LineBasicMaterial({ color: 0xffff00, linewidth: 10 })
+    );
+    warningBox.name = "WarningBox";
+    block.add(warningBox);
+  }
+}
+
+function updateBoundingBox() {
+  if (boundingBoxState === 1) {
+    if (control.object === undefined) scene.remove(boundingBox);
+    else scene.add(boundingBox);
+  }
+}
+
+function setBoundType(value) {
+  UI.SetSelectedBoundType(value);
+  boundingBoxState = value;
+  switch (value) {
+    case 0:
+      scene.add(boundingBox);
+      break;
+    case 1:
+      updateBoundingBox();
+      break;
+    case 2:
+      scene.remove(boundingBox);
+      break;
+  }
+}
+
+function onClick(event) {
+  outOfBoundsCheck(control.object);
+  if (drag) return;
+  event.preventDefault();
+  let rect = renderer.domElement.getBoundingClientRect();
+  mousePosition.x =
+    ((event.clientX - rect.left) / (rect.width - rect.left)) * 2 - 1;
+  mousePosition.y =
+    -((event.clientY - rect.top) / (rect.bottom - rect.top)) * 2 + 1;
+  rayCaster.setFromCamera(mousePosition, camera);
+  let intersects = rayCaster.intersectObjects(
+    currentLevel.blocks.children,
+    true
+  );
+  if (intersects.length === 0) {
+    control.detach(control.object);
+    UI.UpdateMenuDisplay(undefined, currentWorld);
+    updateBoundingBox();
+    return;
+  }
+  for (let i = 0; i < intersects.length; i++) {
+    if (intersects[i]["object"]["geometry"]["type"] !== "BoxGeometry") continue;
+    let block = scene.getObjectByName(intersects[i]["object"]["name"]);
+    control.attach(block);
+    UI.UpdateMenuDisplay(block, currentWorld);
+    //Check if the current attribute is available
+    if (selectedAttribute.block !== undefined) {
+      switch (selectedAttribute.block.userData["type"]) {
+        //If a moving block wants to be connected
+        case 5:
+          if (selectedAttribute.block === block) return;
+          let movingData = selectedAttribute.block.userData["moving"];
+          movingData.toPosition = new THREE.Vector3(
+            block.position.x,
+            LevelManager.ConvertYPosition(block.position.y) - 1,
+            block.position.z
+          );
+          if (movingData.fromPosition.x < movingData.toPosition.x)
+            movingData.type = 1;
+          if (movingData.fromPosition.y < movingData.toPosition.y)
+            movingData.type = 5;
+          if (movingData.fromPosition.z < movingData.toPosition.z)
+            movingData.type = 2;
+          if (movingData.fromPosition.x > movingData.toPosition.x)
+            movingData.type = 4;
+          if (movingData.fromPosition.y > movingData.toPosition.y)
+            movingData.type = 0;
+          if (movingData.fromPosition.z > movingData.toPosition.z)
+            movingData.type = 3;
+          if (movingData.fromPosition.x != movingData.toPosition.x)
+            movingData.orientation = 1;
+          if (movingData.fromPosition.y != movingData.toPosition.y)
+            movingData.orientation = 5;
+          if (movingData.fromPosition.z != movingData.toPosition.z)
+            movingData.orientation = 2;
+          if (
+            movingData.fromPosition.x > movingData.toPosition.x ||
+            movingData.fromPosition.y > movingData.toPosition.y ||
+            movingData.fromPosition.z > movingData.toPosition.z
+          )
+            [movingData.fromPosition, movingData.toPosition] = [
+              movingData.toPosition,
+              movingData.fromPosition,
+            ];
+          control.attach(selectedAttribute.block);
+          clearAttribute();
+          UI.RemoveAlert("info-alert");
+          UI.DisplayAlert(
+            "success-alert",
+            "Successfully attached moving block to block!"
+          );
+          break;
+        //If a laser block is wanting to be connected
+        case 8:
+          if (selectedAttribute.element == UI.editlaserpower) {
+            if (block.userData["type"] > 4) {
+              let blockSide = 0;
+              if (block.userData["type"] == 8) blockSide = 6;
+              selectedAttribute.block.userData["laser"].power =
+                LevelManager.ConvertBlockCode(currentLevel, block, blockSide);
+              UI.RemoveAlert("info-alert");
+              UI.DisplayAlert(
+                "success-alert",
+                "Successfully attached laser power to block!"
+              );
+              clearAttribute();
+            } else {
+              let blocks =
+                UI.blocksideselections.getElementsByClassName("block");
+              let blockSelects = [
+                UI.selectPX,
+                UI.selectNX,
+                UI.selectPY,
+                UI.selectNY,
+                UI.selectPZ,
+                UI.selectNZ,
+              ];
+              for (let j = 0; j < blocks.length; j++) {
+                blocks[j].childNodes[3].style.backgroundImage =
+                  blockSelects[j].style.backgroundImage;
+                blocks[j].childNodes[3].children[0].style.display =
+                  blockSelects[j].children[0].style.display;
+                blocks[j].childNodes[3].children[0].src =
+                  blockSelects[j].children[0].src;
+              }
+              UI.blocksideselections.style.display = "block";
             }
-        }
-        return [
-            genMat(posX),//Pos X
-            genMat(negX),//Neg X
-            genMat(posY),//Pos Y
-            genMat(negY),//Neg Y
-            genMat(posZ),//Pos Z
-            genMat(negZ)//Neg Z
-        ]
-    }
-
-    level.block = {
-        add:(vector=null,type=null,block=null)=> {
-            if(vector === null && type === null && block === null){
-                let temp = new THREE.Mesh(new THREE.BoxBufferGeometry(), generateTexture(selectedBlock))
-                if (transf.object !== undefined){
-                    temp.position.x = transf.object.position.x
-                    temp.position.y = transf.object.position.y
-                    temp.position.z = transf.object.position.z
+            break;
+          }
+          if (selectedAttribute.block === block) return;
+          let laserData = selectedAttribute.block.userData["laser"];
+          laserData.toPosition = new THREE.Vector3(
+            block.position.x,
+            LevelManager.ConvertYPosition(block.position.y) - 1,
+            block.position.z
+          );
+          if (laserData.fromPosition.x != laserData.toPosition.x)
+            laserData.orientation = 1;
+          if (laserData.fromPosition.y != laserData.toPosition.y)
+            laserData.orientation = 5;
+          if (laserData.fromPosition.z != laserData.toPosition.z)
+            laserData.orientation = 2;
+          if (
+            laserData.fromPosition.x > laserData.toPosition.x ||
+            laserData.fromPosition.y > laserData.toPosition.y ||
+            laserData.fromPosition.z > laserData.toPosition.z
+          ) {
+            [laserData.fromPosition, laserData.toPosition] = [
+              laserData.toPosition,
+              laserData.fromPosition,
+            ];
+            laserData.swapped = false;
+          } else laserData.swapped = true;
+          selectedAttribute.block.material = TextureManager.MapLaserTexture(
+            selectedAttribute.block
+          );
+          control.attach(selectedAttribute.block);
+          clearAttribute();
+          UI.RemoveAlert("info-alert");
+          UI.DisplayAlert(
+            "success-alert",
+            "Successfully attached laser to block!"
+          );
+          break;
+        default:
+          //If the selected attribute's item is wanting to be connected
+          if (selectedAttribute.item !== undefined) {
+            switch (selectedAttribute.item.id) {
+              //If the selected attribute's item is a transporter or button
+              case 5:
+              case 9:
+                //If it is a block that doesn't have any items
+                if (block.userData["type"] > 4) {
+                  let blockSide = 0;
+                  switch (selectedAttribute.item.id) {
+                    //If it's a transporter that is wanting to connect to this block
+                    case 5:
+                      //If it's a transporter's power that is wanting to connect to this block
+                      if (
+                        selectedAttribute.element == UI.edittransporterpower
+                      ) {
+                        if (block.userData["type"] == 8) blockSide = 6;
+                        selectedAttribute.block.userData["items"][
+                          selectedAttribute.side
+                        ].power1 = LevelManager.ConvertBlockCode(
+                          currentLevel,
+                          block,
+                          blockSide
+                        );
+                        UI.RemoveAlert("info-alert");
+                        UI.DisplayAlert(
+                          "success-alert",
+                          "Successfully attached transporter power to block!"
+                        );
+                      }
+                      //If it's the transporter's teleportation location that is wanting to connect to this block
+                      else {
+                        selectedAttribute.block.userData["items"][
+                          selectedAttribute.side
+                        ].toPosition = LevelManager.ConvertBlockCode(
+                          currentLevel,
+                          block,
+                          0
+                        );
+                        UI.RemoveAlert("info-alert");
+                        UI.DisplayAlert(
+                          "success-alert",
+                          "Successfully attached transporter to block!"
+                        );
+                      }
+                      break;
+                    //If it's a button that is wanting to connect to this block
+                    case 9:
+                      if (block.userData["type"] == 8) blockSide = 6;
+                      if (selectedAttribute.element == UI.editbuttonpower1)
+                        selectedAttribute.block.userData["items"][
+                          selectedAttribute.side
+                        ].power1 = LevelManager.ConvertBlockCode(
+                          currentLevel,
+                          block,
+                          blockSide
+                        );
+                      else
+                        selectedAttribute.block.userData["items"][
+                          selectedAttribute.side
+                        ].power2 = LevelManager.ConvertBlockCode(
+                          currentLevel,
+                          block,
+                          blockSide
+                        );
+                      UI.RemoveAlert("info-alert");
+                      UI.DisplayAlert(
+                        "success-alert",
+                        "Successfully attached button to block!"
+                      );
+                      break;
+                  }
+                  clearAttribute();
                 } else {
-                    temp.position.x = 16
-                    temp.position.y = 16
-                    temp.position.z = 16
+                  //If it is a block that you are wanting to connect to, and it has items, then bring up the side select menu
+                  let blocks =
+                    UI.blocksideselections.getElementsByClassName("block");
+                  let blockSelects = [
+                    UI.selectPX,
+                    UI.selectNX,
+                    UI.selectPY,
+                    UI.selectNY,
+                    UI.selectPZ,
+                    UI.selectNZ,
+                  ];
+                  for (let j = 0; j < blocks.length; j++) {
+                    blocks[j].childNodes[3].style.backgroundImage =
+                      blockSelects[j].style.backgroundImage;
+                    blocks[j].childNodes[3].children[0].style.display =
+                      blockSelects[j].children[0].style.display;
+                    blocks[j].childNodes[3].children[0].src =
+                      blockSelects[j].children[0].src;
+                  }
+                  UI.blocksideselections.style.display = "block";
                 }
-                temp.userData = {blockType:"Normal",blockTile:selectedBlock}
-                temp.userData.items = {
-                    posX:null,
-                    negX:null,
-                    posY:null,
-                    negY:null,
-                    posZ:null,
-                    negZ:null,
-                }
-                level.add(temp)
-                transf.detach(transf.object)
-                transf.attach(temp)
-            } else {
-                let temp = new THREE.Mesh(new THREE.BoxBufferGeometry(), generateTexture(block))
-                temp.position.x = vector.x
-                temp.position.y = vector.y
-                temp.position.z = vector.z
-                temp.userData = {blockType:type,blockTile:block}
-                temp.userData.items = {
-                    posX:null,
-                    negX:null,
-                    posY:null,
-                    negY:null,
-                    posZ:null,
-                    negZ:null,
-                }
-                level.add(temp)
-                return temp
+                break;
             }
-            updateCommon()
-            document.getElementById('addBlock').blur()
-        },
-        remove:()=> {
-            if (transf.object !== undefined){
-                let object = transf.object
-                transf.detach(object)
-                level.remove(object)
-                if(level.children.length > 0) {
-                    transf.attach(level.children[level.children.length - 1])
-                }
-                updateCommon()
-            }}}
-    level.lastLoaded = null
-    level.clear = function() {
-        if (transf.object !== undefined){
-            transf.detach(transf.object)
-            updateCommon()
-        }
-        while(level.children.length>0){level.remove(level.children[0])}
+          }
+          break;
+      }
     }
-    level.load = function(levelBytes) {
-        function blocksToCoords(block) {
-            let positionArray = new THREE.Vector3(0,33,0)
-            let atCoord = 0
-            while(positionArray.x < 34) {
-                while(positionArray.z < 34) {
-                    while(positionArray.y > -1) {
-                        if ((block/2) == atCoord) {
-                            return {x:positionArray.x,y:positionArray.y,z:positionArray.z}
-                        } else {
-                            positionArray.y--
-                            atCoord++
-                        }}
-                    positionArray.y = 33
-                    positionArray.z++
-                }
-                positionArray.z = 0
-                positionArray.x++
-            }}
-        level.clear()
-        let itemArray=[]
-        let itemIndex = 0
-        if(levelBytes.length>78608){
-            let itemAmount = levelBytes[78612]
-            for(let i=0;i<itemAmount;i++){
-                itemArray.push(new Array())
-                for(let xi=0;xi<256;xi++){
-                    itemArray[i].push(levelBytes[(i*256)+78614+xi])
-                }
-            }
-        }
-        for(let i=0;i<78608;i+=2) {
-            switch(levelBytes[i]){
-                case 0:
-                case 1:
-                case 2:
-                case 3:
-                case 4:
-                    level.block.add(new THREE.Vector3(blocksToCoords(i).x,blocksToCoords(i).y,blocksToCoords(i).z),"Normal",levelBytes[i])
-                    break
-                case 255:
-                    break
-                default:
-                    if(itemArray[itemIndex][0] === 6){
-                        let temp = level.block.add(new THREE.Vector3(blocksToCoords(i).x,blocksToCoords(i).y,blocksToCoords(i).z),"Normal",itemArray[itemIndex][0])
-                        changeBlock(temp,"6")
-                    } else {
-                        let temp = level.block.add(new THREE.Vector3(blocksToCoords(i).x,blocksToCoords(i).y,blocksToCoords(i).z),"Special",itemArray[itemIndex][0])
-                        let positions = ["posY","posX","posZ","negZ","negX","negY"]
-                        for(let i=0;i<positions.length;i++){
-                            if(itemArray[itemIndex][2+(32*i)]!==0){
-                                let variantID = ""
-                                switch(itemArray[itemIndex][2+(32*i)]){
-                                    case 37:
-                                        switch(itemArray[itemIndex][6+(32*i)]){
-                                            case 0:variantID="c";break
-                                            case 1:variantID="b";break
-                                            case 2:variantID="a";break
-                                        }
-                                    case 36:
-                                        switch(itemArray[itemIndex][6+(32*i)]){
-                                            case 0:variantID="c";break
-                                            case 1:variantID="b";break
-                                            case 2:variantID="a";break
-                                        }
-                                }
-                                addItem(temp,itemArray[itemIndex][2+(32*i)]+variantID,positions[i])
-                            }
-                        }
-                    }
-                    itemIndex++
-                    break
-            }}}
-    level.build = ()=>{
-        function coordsToBlocks(bPos) {
-            let positionArray = new THREE.Vector3(0,33,0)
-            let atCoord = 0
-            while(positionArray.x < 34) {
-                while(positionArray.z < 34) {
-                    while(positionArray.y > -1) {
-                        if (positionArray.x === bPos.x && positionArray.y === bPos.y && positionArray.z === bPos.z ) {
-                            return atCoord*2
-                        } else {
-                            positionArray.y--
-                            atCoord++
-                        }}
-                    positionArray.y = 33
-                    positionArray.z++
-                }
-                positionArray.z = 0
-                positionArray.x++
-            }
-        }
-        function convertY(y){
-            let arr = []
-            for(let i = 34; i > -1; i--) arr.push(i)
-            return arr[y]
-        }
-        function generateItem(block){
-            let positions = ["posY","posX","posZ","negZ","negX","negY"]
-            function partialItem(item,block=null) {
-                let temp = []
-                if(item===null){
-                    if(block===null){
-                        temp.push(255)
-                        temp.push(255)
-                    } else {
-                        temp.push(indian(block)[0])
-                        temp.push(indian(block)[1])
-                    }
-                    for(let i=0;i<30;i++){
-                        temp.push(255)
-                    }
-                    temp[2] = 0
-                    temp[3] = 0
-                    temp[8] = 0
-                    temp[9] = 0
-                    temp[16] = 0
-                    temp[17] = 0
-                    return temp
-                } else {
-                    if(block===null){
-                        temp.push(255)
-                        temp.push(255)
-                    } else {
-                        temp.push(indian(block)[0])
-                        temp.push(indian(block)[1])
-                    }
-                    temp.push(indian(item.id)[0])
-                    temp.push(indian(item.id)[1])
-                    for(let i=0;i<6;i++)temp.push(0)
-                    switch(item.id){
-                        case 30:
-                        case 8:
-                        case 51:
-                        case 1:
-                        case 2:
-                        case 3:
-                        case 4:
-                        case 26:
-                        case 56:
-                        case 53:
-                        case 52:
-                        case 50:
-                            temp[8]=0
-                            break
-                        case 7:
-                            temp[8]=2
-                            break
-                        case 37:
-                        case 36:
-                            temp[6] = indian(item.variant)[0]
-                            temp[7] = indian(item.variant)[1]
-                            temp[8]=1
-                            break
-                        default:
-                            temp[8]=1
-                            break
-                    }
-                    for(let i=0;i<22;i++){
-                        temp.push(255)
-                    }
-                    temp[16]=0
-                    temp[17]=0
-                    return temp
-                }
-            }
-            let wholeItem = []
-            wholeItem = wholeItem.concat(partialItem(block.userData.items[positions[0]],block.userData.blockTile))
-            for(let i=1;i<positions.length;i++){
-                wholeItem = wholeItem.concat(partialItem(block.userData.items[positions[i]]))
-            }
-            for(let i=0;i<64;i++){
-                wholeItem.push(255)
-            }
-            wholeItem[250] = indian(block.position.x)[0]
-            wholeItem[251] = indian(block.position.x)[1]
-            wholeItem[252] = indian(block.position.z)[0]
-            wholeItem[253] = indian(block.position.z)[1]
-            wholeItem[254] = indian(convertY(block.position.y+1))[0]
-            wholeItem[255] = indian(convertY(block.position.y+1))[1]
-            return wholeItem
-        }
-        let coordOrder = []
-        let blocksBase = []
-        let orderedMeshes = []
-        let itemIndex = 0
-        let itemArray = []
-        for (let i = 0; i < 78608; i++) {
-            blocksBase.push(255)
-        }
-        for (let i = 0; i < level.children.length; i++) {
-            coordOrder.push(coordsToBlocks(level.children[i].position))
-        }
-        coordOrder.sort(function(a, b){return a-b})
-        for (let i = 0; i < level.children.length; i++) {
-            orderedMeshes.push([])
-        }
-        for (let i = 0; i < level.children.length; i++) {
-            orderedMeshes[coordOrder.indexOf(coordsToBlocks(level.children[i].position))] = level.children[i]
-        }
-        for (let i = 0; i < orderedMeshes.length; i++) {
-            let coord = coordsToBlocks(orderedMeshes[i].position)
-            if (orderedMeshes[i].userData.blockType === "Normal") {
-                blocksBase[coord] = orderedMeshes[i].userData.blockTile
-                blocksBase[coord + 1] = 0
-            } else {
-                blocksBase[coord] = itemIndex + 5
-                blocksBase[coord + 1] = 0
-                itemArray.push(generateItem(orderedMeshes[i]))
-                itemIndex+=1
-            }
-        }
-        blocksBase.push(indian(orderedMeshes.length)[0])
-        blocksBase.push(indian(orderedMeshes.length)[1])
-        blocksBase.push(0)
-        blocksBase.push(0)
-        blocksBase.push(indian(itemIndex)[0])
-        blocksBase.push(indian(itemIndex)[1])
-        for(let i=0;i<itemArray.length;i++){
-            blocksBase = blocksBase.concat(itemArray[i])
-        }
-        return blocksBase
-    }
+    UI.UpdateMenuDisplay(control.object, currentWorld);
+    updateBoundingBox();
+    break;
+  }
+}
 
-    let selectBound = false
-
-    function setSelected(number){
-        let ids = [
-            'selTile',
-            'selFire',
-            'selIce',
-            'selInvis',
-            'selAcid'
-        ]
-        selectedBlock = number;resetBlockChoice();document.getElementById(ids[number]).classList = "selected"
-    }
-    
-    function setBoundSelect(number){
-        let ids = [
-            'bound',
-            'selBound',
-            'noBound'
-        ]
-
-        switch(number){
-            case 0:
-                if(!boundingBoxState) {
-                    scene.add( boundingBox )
-                    boundingBoxState = true
-                }
-                selectBound = false
-                break
-            case 1:
-                if(!selectBound){
-                    selectBound = true
-                }
-                updateCommon()
-                break
-            case 2:
-                if(boundingBoxState){
-                    scene.remove( boundingBox )
-                    boundingBoxState = false
-                }
-                selectBound = false
-                break
-        }
-        resetBoundChoice();document.getElementById(ids[number]).classList = "selected"
-    }
-
-    function updateCommon(){
-        gui.attach(transf.object)
-        if(transf.object!==undefined&&transf.object.userData.blockType!=="Crumble"){
-            transf.object.userData.blockType = "Normal"
-            let positions = ["posX","negX","posY","negY","posZ","negZ"]
-            for(let i=0;i<positions.length;i++){
-                if(transf.object.userData.items[positions[i]]!==null){transf.object.userData.blockType = "Special"}
-            }
-        }
-        if(selectBound){
-            if (transf.object === undefined){
-                if(boundingBoxState){
-                    scene.remove(boundingBox)
-                    boundingBoxState = false
-                }
-            } else {
-                if(!boundingBoxState) {
-                    scene.add(boundingBox)
-                    boundingBoxState = true
-                }
-            }
-        }
-    }
-
-    setSelected(0)
-    setBoundSelect(0)
-    scene.add(transf)
-
-    function resetBlockChoice(){
-        document.getElementById('selTile').classList = ""
-        document.getElementById('selFire').classList = ""
-        document.getElementById('selIce').classList = ""
-        document.getElementById('selAcid').classList = ""
-        document.getElementById('selInvis').classList = ""
-    }
-
-    function resetBoundChoice(){
-        document.getElementById('noBound').classList = ""
-        document.getElementById('selBound').classList = ""
-        document.getElementById('bound').classList = ""
-    }
-
-
-    let gui = {
-        block: null,
-        updateItem: function(itemSide){
-            let image = document.getElementById(itemSide).parentNode.children[1].children[0]
-            document.getElementById(itemSide).value = 0
-            image.style.display = "none"
-            if(gui.block !== null&&gui.block.userData.items[itemSide]!==null){
-                let variantID = ""
-                let patch = false
-                switch(gui.block.userData.items[itemSide].id){
-                    case 1:
-                        document.getElementById(itemSide).value = 1
-                        patch = true
-                        break
-                    case 2:
-                        document.getElementById(itemSide).value = 2
-                        patch = true
-                        break
-                    case 3:
-                        document.getElementById(itemSide).value = 3
-                        patch = true
-                        break
-                    case 4:
-                        document.getElementById(itemSide).value = 4
-                        patch = true
-                        break
-                    case 11:
-                        document.getElementById(itemSide).value = 11
-                        patch = true
-                        break
-                    case 12:
-                        document.getElementById(itemSide).value = 12
-                        patch = true
-                        break
-                    case 7:
-                        document.getElementById(itemSide).value = 7
-                        patch = true
-                        break
-                    case 8:
-                        document.getElementById(itemSide).value = 8
-                        patch = true
-                        break
-                    case 37:
-                        switch(gui.block.userData.items[itemSide].variant){
-                            case 0:variantID="c";break
-                            case 1:variantID="b";break
-                            case 2:variantID="a";break
-                        }
-                        break
-                    case 36:
-                        switch(gui.block.userData.items[itemSide].variant){
-                            case 0:variantID="c";break
-                            case 1:variantID="b";break
-                            case 2:variantID="a";break
-                        }
-                        break
-                }
-                if(!patch){
-                    document.getElementById(itemSide).value = gui.block.userData.items[itemSide].id + variantID
-                    image.src = "sprites/"+gui.block.userData.items[itemSide].id+variantID+".png"
-                    image.style.display = "inline"
-                }
-            }
-        },
-        attach: function(block){
-            if(transf.object === undefined){
-                gui.block=null
-                document.getElementById("itemBar").style.filter = "grayscale(1)"
-                document.getElementById("itemBar").style.display = "none"
-                return null
-            }
-            document.getElementById("itemBar").style.filter = "grayscale(0)"
-            document.getElementById("itemBar").style.display = "block"
-            gui.block = block
-            let blockChoice = document.getElementById("blockChoice").children
-            blockChoice[2].value = block.userData["blockTile"]
-            let mainBlock = ""
-            switch(block.userData["blockTile"]){
-                case 0:mainBlock="tile1";break
-                case 1:mainBlock="fire";break
-                case 2:mainBlock="ice";break
-                case 3:mainBlock="invisible";break
-                case 4:mainBlock="acid";break
-                case 6:mainBlock="crumble";break
-            }
-            blockChoice[1].style.backgroundImage = "url('./textures/" + currentWorldName + "/"+mainBlock+".png')"
-            let averageBlock = document.getElementById("averageBlock").children
-            for(let i=0;i<averageBlock.length;i++){
-                averageBlock[i].children[1].style.backgroundImage = "url('./textures/" + currentWorldName + "/"+block.material[i].userData.textureName+"')"
-            }
-            gui.updateItem("posX")
-            gui.updateItem("negX")
-            gui.updateItem("posY")
-            gui.updateItem("negY")
-            gui.updateItem("posZ")
-            gui.updateItem("negZ")
-        }
-    }
-
-    function addItem(block,itemID,itemSide){
-        if(block.userData.blockType === "Normal"||block.userData.blockType === "Special"){
-            if(block.userData.items[itemSide] !== null) {
-                block.remove(block.getObjectByName(itemSide))
-            }
-            
-            if(itemID === "0"){
-                block.userData.items[itemSide] = null
-                return
-            }
-            let itemLoader = new THREE.TextureLoader()
-            itemLoader.setPath("sprites/")
-            function generateSprite(item) {
-                function genMaterial(file) {
-                    let temp = itemLoader.load(file)
-                    return new THREE.SpriteMaterial({map:temp})
-                }
-                return new THREE.Sprite(genMaterial(item))
-            }
-
-            block.userData.items[itemSide] = {
-                id:parseInt(itemID)
-            }
-            let patch = false
-            switch(itemID){
-                case "37a":block.userData.items[itemSide].variant = 2;break
-                case "37b":block.userData.items[itemSide].variant = 1;break
-                case "37c":block.userData.items[itemSide].variant = 0;break
-                case "36a":block.userData.items[itemSide].variant = 2;break
-                case "36b":block.userData.items[itemSide].variant = 1;break
-                case "36c":block.userData.items[itemSide].variant = 0;break
-                case "1":case "2":case "3":case "4":case "12":case "11":case "8":patch=true;break
-            }
-
-            block.userData["blockType"] = "Special"
-
-            if(!patch){
-                let temp = generateSprite(itemID + ".png")
-
-                switch(itemSide) {
-                    case "posX":temp.position.x +=1;break
-                    case "negX":temp.position.x -=1;break
-                    case "posY":temp.position.y +=1;break
-                    case "negY":temp.position.y -=1;break
-                    case "posZ":temp.position.z +=1;break
-                    case "negZ":temp.position.z -=1;break
-                    default:break
-                }
-                temp.name = itemSide
-                
-                if(temp !== undefined){block.add(temp)}
-                switch(itemID){case"7":updateBlockMaterials(block)}
-            } else {
-                updateBlockMaterials(block)
-            }
-        }
-        updateBlockMaterials(block)
-    }
-
-    function changeBlock(block,newBlock) {
-        switch(newBlock){
-            case "6":
-                block.userData.blockTile = parseInt(newBlock)
-                block.userData.blockType = "Crumble"
-                break
-            default:
-                block.userData.blockTile = parseInt(newBlock)
-                break
-        }
-        updateBlockMaterials(block)
-        updateCommon()
-    }
-
-
-    let fileInput = document.getElementById("browseOpen");
-    fileInput.onchange = function () {
-        var reader = new FileReader();
-        var fileByteArray = [];
-        reader.readAsArrayBuffer(this.files[0]);
-        reader.onloadend = function (evt) {
-            if (evt.target.readyState == FileReader.DONE) {
-            var arrayBuffer = evt.target.result,
-                array = new Uint8Array(arrayBuffer);
-            for (var i = 0; i < array.length; i++) {
-                fileByteArray.push(array[i]);
-                }
-            }
-            level.load(fileByteArray)
-            level.lastLoaded = fileByteArray
-            document.getElementById("browseOpen").value=null;
-        }
-    }
-    
-    function updateBlockMaterials(block){
-        let positions = ["posX","negX","posY","negY","posZ","negZ"]
-        let temp = block.userData.blockTile
-        let blockthang = {
-            posX:temp,
-            negX:temp,
-            posY:temp,
-            negY:temp,
-            posZ:temp,
-            negZ:temp
-        }
-        if(block.userData.blockType === "Special"){
-            for(let i=0;i<positions.length;i++){
-                if(block.userData.items[positions[i]]!==null){
-                    switch(block.userData.items[positions[i]].id){
-                        case 1:case 2:case 3:case 4:blockthang[positions[i]] = block.userData.items[positions[i]].id;break
-                        case 11:blockthang[positions[i]] = 8;break
-                        case 12:blockthang[positions[i]] = 9;break
-                        case 7:blockthang[positions[i]] = 12;break
-                        case 8:blockthang[positions[i]] = 10;break
-                        case 26:case 30:break
-                        default:if(block.userData.blockTile===0){console.log("why the fuck");blockthang[positions[i]] = 6;}break
-                    }
-                }
-            }
-            block.material = generateTexture(blockthang.posX,blockthang.negX,blockthang.posY,blockthang.negY,blockthang.posZ,blockthang.negZ,)
-        } else if(block.userData.blockType === "Crumble"){
-            block.material = generateTexture(5)
-        } else if(block.userData.blockType === "Normal"){
-            block.material = generateTexture(blockthang.posX)
-        }
-        gui.attach(block)
-    }
-
-    
-
-    document.getElementById("posX").onchange = ()=>{
-        addItem(transf.object,document.getElementById("posX").value,"posX")
-        updateBlockMaterials(transf.object)
-        gui.updateItem("posX")
-    }
-    document.getElementById("negX").onchange = ()=>{
-        addItem(transf.object,document.getElementById("negX").value,"negX")
-        updateBlockMaterials(transf.object)
-        gui.updateItem("negX")
-    }
-    document.getElementById("posY").onchange = ()=>{
-        addItem(transf.object,document.getElementById("posY").value,"posY")
-        updateBlockMaterials(transf.object)
-        gui.updateItem("posY")
-    }
-    document.getElementById("negY").onchange = ()=>{
-        addItem(transf.object,document.getElementById("negY").value,"negY")
-        updateBlockMaterials(transf.object)
-        gui.updateItem("negY")
-    }
-    document.getElementById("posZ").onchange = ()=>{
-        addItem(transf.object,document.getElementById("posZ").value,"posZ")
-        updateBlockMaterials(transf.object)
-        gui.updateItem("posZ")
-    }
-    document.getElementById("negZ").onchange = ()=>{
-        addItem(transf.object,document.getElementById("negZ").value,"negZ")
-        updateBlockMaterials(transf.object)
-        gui.updateItem("negZ")
-    }
-
-    //Onclicks
-    document.getElementById('openLevel').onclick = ()=> {document.getElementById("browseOpen").click()}
-    document.getElementById('bound').onclick = ()=> {setBoundSelect(0)}
-    document.getElementById('selBound').onclick = ()=> {setBoundSelect(1)}
-    document.getElementById('noBound').onclick = ()=> {setBoundSelect(2)}
-    document.getElementById('selTile').onclick = ()=> {setSelected(0)}
-    document.getElementById('selFire').onclick = ()=> {setSelected(1)}
-    document.getElementById('selIce').onclick = ()=> {setSelected(2)}
-    document.getElementById('selInvis').onclick = ()=> {setSelected(3)}
-    document.getElementById('selAcid').onclick = ()=> {setSelected(4)}
-    document.getElementById('exportLevel').onclick = ()=> {saveByteArray([new Uint8Array(level.build())],'LEVEL')}
-    document.getElementById('addBlock').onclick = ()=> {level.block.add()}
-    document.getElementById('subBlock').onclick = ()=> {level.block.remove()}
-
-    let blockSelect = document.getElementById('blockSelect');
-    blockSelect.onchange = function(){
-        if(gui.block !== null){
-            changeBlock(gui.block,this.value)
-        }
-    }
-
-    window.addEventListener( 'resize', onWindowResize )
-    
-    //Keypresses
-    window.addEventListener( 'keydown', function ( event ) {
-        document.activeElement.blur()
-        if(event.altKey) {
-            switch (event.keyCode){
-                case 49:setBoundSelect(0);break
-                case 50:setBoundSelect(1);break
-                case 51:setBoundSelect(2);break
-                case 191:
-                    console.log("This is the testing key!")
-                    console.log(camera.position)
-                    break
-                case 82:
-                    if(event.shiftKey){
-                        if(level.lastLoaded !== null){
-                            if(confirm("Would you like to reload last loaded level?")){
-                                level.load(level.lastLoaded)
-                            }
-                        }
-                    }
-            }
-        } else if (event.ctrlKey) {
-            switch(event.keyCode){
-                case 79:fileInput.click();break//O
-                case 69:case 191:saveByteArray([new Uint8Array(level.build())],'LEVEL');break//E,Forward Slash
-                case 82:
-                    if(event.shiftKey){break}
-                    level.load(level.build())
-                    break
-                case 8:
-                    if(event.shiftKey){
-                        if(confirm("Would you like to clear the level?")){
-                            level.clear()
-                        }
-                    }
-            }
-        } else {
-            switch (event.keyCode) {
-                case 49:
-                    setSelected(0)
-                    break
-                case 50:
-                    setSelected(1)
-                    break
-                case 51:
-                    setSelected(2)
-                    break
-                case 52:
-                    setSelected(3)
-                    break
-                case 53:
-                    setSelected(4)
-                    break
-                case 8: //Backspace
-                case 46: // Delete
-                case 88: // X
-                    level.block.remove()
-                    break
-                case 191: // Forward Slash
-                    if(transf.object!==undefined){
-                        console.log("You have pressed the DEV KEY, here's the current block!")
-                        console.log(transf.object)
-                    }else{
-                        console.log("You have pressed the DEV KEY, here's the current level group!")
-                        console.log(level)
-                    }
-                    break
-                case 65: // A
-                case 32: // Spacebar
-                    level.block.add()
-                    break
-                case 96: // Numpad 0
-                    if (transf.object !== undefined){
-                        orbit.target.set(transf.object.position.x,transf.object.position.y,transf.object.position.z)
-                        orbit.update()
-                    } else {
-                        orbit.target.set(16.5,16.5,16.5)
-                        orbit.update()
-                    }
-                    break
-            }
-        }
-        
-
-    } )
+function onKeyPress(event) {
+  if (
+    document.activeElement == UI.editmovingspeed ||
+    document.activeElement == UI.editleveltime
+  )
+    return;
+  document.activeElement.blur();
+  switch (event.keyCode) {
+    case 32:
+    case 65:
+      addBlock();
+      break;
+    case 8:
+    case 46:
+    case 88:
+      removeBlock(control.object);
+      break;
+    case 67:
+      copyBlock(control.object);
+      break;
+    case 96:
+      if (control.object !== undefined) {
+        controls.target.set(
+          control.object.position.x,
+          control.object.position.y,
+          control.object.position.z
+        );
+      } else controls.target.set(16.5, 16.5, 16.5);
+      controls.update();
+      break;
+    case 77:
+      selectedTransporter = control.object;
+      break;
+  }
 }
 
 function onWindowResize() {
-    camera.aspect = window.innerWidth / window.innerHeight
-    camera.updateProjectionMatrix()
-    renderer.setSize(window.innerWidth,window.innerHeight)
+  camera.aspect = window.innerWidth / window.innerHeight;
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  camera.updateProjectionMatrix();
 }
 
-function animate() {requestAnimationFrame(animate);render()}
-function render() {renderer.render(scene,camera)}
+window.addEventListener("beforeunload", (event) => {
+  event.returnValue = true;
+});
 
-init()
-animate()
+selectedBlockType = 0;
+UI.SetSelectedBlockType(0);
+setBoundType(0);
+
+function BE(val) {
+  return ((val & 0xff) << 8) | ((val >> 8) & 0xff);
+}
+function clearAttribute() {
+  selectedAttribute.block =
+    selectedAttribute.item =
+    selectedAttribute.side =
+    selectedAttribute.element =
+      undefined;
+  UI.editmovingconnection.innerText =
+    UI.editlaserconnection.innerText =
+    UI.editlaserpower.innerText =
+    UI.edittransporterconnection.innerText =
+    UI.edittransporterpower.innerText =
+    UI.editbuttonpower1.innerText =
+    UI.editbuttonpower2.innerText =
+      "Attach";
+  UI.UpdateMenuDisplay(control.object, currentWorld);
+}
+function render() {
+  renderer.render(scene, camera);
+}
+function animate() {
+  requestAnimationFrame(animate);
+  render();
+}
+animate();
+
+setWorld(worldNames[Math.floor(Math.random()*worldNames.length)])

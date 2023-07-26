@@ -1,306 +1,393 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="utf-8">
     <title>Kula Workshop Level Editor</title>
-    <meta name="author" content="Murphy">
-    <meta name="description" content="Create and edit level files from and for Kula World.">
+    <meta name="author" content="Murphy and SaturnKai">
+    <meta name="description" content="Create and edit levels from and for Kula World.">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link rel="stylesheet" href="css.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.6.0/jquery.min.js"></script>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 
 <body>
     <div id="menu">
-        <div id="menuBar">
-            <img id="exportLevel" src="ui/export.png">
-            <img id="openLevel" src="ui/open.png">
-            <img id="addBlock" src="ui/addblock.png" style="margin-left: 12px;">
-            <img id="subBlock" src="ui/removeblock.png">
-            <img id="selTile" src="ui/tile.png" style="margin-left: 12px;">
-            <img id="selFire" src="ui/fire.png">
-            <img id="selIce" src="ui/ice.png">
-            <img id="selInvis" src="ui/invisible.png">
-            <img id="selAcid" src="ui/acid.png">
-            <img id="bound" src="ui/Bound.png" style="margin-left: 12px;">
-            <img id="selBound" src="ui/SelBound.png">
-            <img id="noBound" src="ui/No Bound.png">
-            <input type="file" id="browseOpen" style="display:none;">
-        </div>
-        <div id="itemBar" style="filter:grayscale(1);display:none;">
-            <div class="blockGroup" id="blockChoice" style="border-right:1px solid #404040;padding-right: 22px;margin-right: 11px;">
-                <p style="text-decoration:underline">Block</p>
-                <div style="background-image: url(./textures/hiro/tile1.png);">
-                    <img height="64" style="display: none;">
+        <div id="menu-bar">
+            <div class="menu-left">
+                <div class="level-settings">
+                    <button class="menu-icon" id="export" title="Export Level"><img src="ui/Export.png" alt="Export Level"></button>
+                    <button class="menu-icon" id="open" title="Open Level"><img src="ui/Open.png" alt="Open Level"></button>
+                    <button class="menu-icon" id="options" title="Level Options"><img src="ui/Options.png" alt="Level Options"></button>
                 </div>
-                <select id="blockSelect">
-                    <option value="0">Normal</option>
-                    <option value="1">Fire</option>
-                    <option value="2">Ice</option>
-                    <option value="3">Invisible</option>
-                    <option value="4">Acid</option>
-                    <option value="6">Crumbling</option>
-                    <!-- <option value="7">Flashing</option>
-                    <option value="5">Moving</option>
-                    <option value="8">Laser</option> -->
-                </select>
+                <div class="block-ops">
+                    <button class="menu-icon" id="add" title="Add Block"><img src="ui/AddBlock.png" alt="Add Block"></button>
+                    <button class="menu-icon" id="remove" title="Remove Block"><img src="ui/RemoveBlock.png" alt="Remove Block"></button>
+                </div>
+                <div class="block-types">
+                    <button class="menu-icon" id="regular" title="Regular Block"><img src="ui/Regular.png" alt="Regular Block"></button>
+                    <button class="menu-icon" id="fire" title="Fire Block"><img src="ui/Fire.png" alt="Fire Block"></button>
+                    <button class="menu-icon" id="ice" title="Ice Block"><img src="ui/Ice.png" alt="Ice Block"></button>
+                    <button class="menu-icon" id="invisible" title="Invisible Block"><img src="ui/Invisible.png" alt="Invisible Block"></button>
+                    <button class="menu-icon" id="acid" title="Acid Block"><img src="ui/Acid.png" alt="Acid Block"></button>
+                </div>
             </div>
-            <div id="averageBlock">
-                <div class="blockGroup">
-                    <p style="text-decoration:underline;text-decoration-color: red;">Positive X</p>
-                    <div style="background-image: url(./textures/hiro/tile1.png);">
-                        <img height="64" style="display: none;">
-                    </div>
-                    <select id="posX">
-                        <option value="0">None</option>
-                        <option value="30">Player Spawn</option>
-                        <option value="31">Key</option>
-                        <option value="36a">Red Gem</option>
-                        <option value="36b">Green Gem</option>
-                        <option value="36c">Blue Gem</option>
-                        <option value="37a">Bronze Coin</option>
-                        <option value="37b">Blue Coin</option>
-                        <option value="37c">Gold Coin</option>
-                        <option value="46">Fruit</option>
-                        <option value="32">Lethargy Pill</option>
-                        <option value="33">Bounce Pill</option>
-                        <option value="34">Invincibility Pill</option>
-                        <option value="38">Sunglasses</option>
-                        <!-- <option value="5">Transporter</option>
-                        <option value="9">Button</option> -->
-                        <option value="7">Exit</option>
-                        <option value="26">Hidden Exit</option>
-                        <option value="8">Time Stop Patch</option>
-                        <option value="35">Timer Flip</option>
-                        <option value="10">Bounce Pad</option>
-                        <option value="11">Moving Spikes</option>
-                        <option value="12">Spikes</option>
-                        <option value="28">Arrow</option>
-                        <option value="50">Slow Star</option>
-                        <option value="52">Fast Star</option>
-                        <option value="51">Tire</option>
-                        <option value="53">Capture Pod</option>
-                        <option value="56">Captivator</option>
-                        <option value="42">Hedgehog</option>
-                        <option value="1">Fire Patch</option>
-                        <option value="2">Ice Patch</option>
-                        <option value="3">Invisible Patch</option>
-                        <option value="4">Acid Patch</option>
-                    </select>
+            <div class="menu-right">
+                <div class="bound-styles">
+                    <button class="menu-icon" id="show-bounds" title="Bounds Visible"><img src="ui/Bounds.png" alt="Bounds Visible"></button>
+                    <button class="menu-icon" id="selection-bounds" title="Bounds Toggled"><img src="ui/SelectionBounds.png" alt="Bounds Toggled"></button>
+                    <button class="menu-icon" id="no-bounds" title="Bounds Off"><img src="ui/NoBounds.png" alt="Bounds Off"></button>
                 </div>
-                <div class="blockGroup">
-                    <p style="text-decoration:underline;text-decoration-color: red;">Negative X</p>
-                    <div style="background-image: url(./textures/hiro/tile1.png);">
-                        <img height="64" style="display: none;">
-                    </div>
-                    <select id="negX">
-                        <option value="0">None</option>
-                        <option value="30">Player Spawn</option>
-                        <option value="31">Key</option>
-                        <option value="36a">Red Gem</option>
-                        <option value="36b">Green Gem</option>
-                        <option value="36c">Blue Gem</option>
-                        <option value="37a">Bronze Coin</option>
-                        <option value="37b">Blue Coin</option>
-                        <option value="37c">Gold Coin</option>
-                        <option value="46">Fruit</option>
-                        <option value="32">Lethargy Pill</option>
-                        <option value="33">Bounce Pill</option>
-                        <option value="34">Invincibility Pill</option>
-                        <option value="38">Sunglasses</option>
-                        <!-- <option value="5">Transporter</option>
-                        <option value="9">Button</option> -->
-                        <option value="7">Exit</option>
-                        <option value="26">Hidden Exit</option>
-                        <option value="8">Time Stop Patch</option>
-                        <option value="35">Timer Flip</option>
-                        <option value="10">Bounce Pad</option>
-                        <option value="11">Moving Spikes</option>
-                        <option value="12">Spikes</option>
-                        <option value="28">Arrow</option>
-                        <option value="50">Slow Star</option>
-                        <option value="52">Fast Star</option>
-                        <option value="51">Tire</option>
-                        <option value="53">Capture Pod</option>
-                        <option value="56">Captivator</option>
-                        <option value="42">Hedgehog</option>
-                        <option value="1">Fire Patch</option>
-                        <option value="2">Ice Patch</option>
-                        <option value="3">Invisible Patch</option>
-                        <option value="4">Acid Patch</option>
-                    </select>
+                <div class="theme-styles">
+                    <button class="menu-icon" id="hiro" title="Hiro Theme" class="selected"><img src="ui/Hiro.png" alt="Hiro Theme"></button>
+                    <button class="menu-icon" id="hills" title="Hills Theme"><img src="ui/Hills.png" alt="Hills Theme"></button>
+                    <button class="menu-icon" id="inca" title="Inca Theme"><img src="ui/Inca.png" alt="Inca Theme"></button>
+                    <button class="menu-icon" id="arctic" title="Arctic Theme"><img src="ui/Arctic.png" alt="Arctic Theme"></button>
+                    <button class="menu-icon" id="cowboy" title="Cowboy Theme"><img src="ui/Cowboy.png" alt="Cowboy Theme"></button>
+                    <button class="menu-icon" id="field" title="Field Theme"><img src="ui/Field.png" alt="Field Theme"></button>
+                    <button class="menu-icon" id="atlantis" title="Atlantis Theme"><img src="ui/Atlantis.png" alt="Atlantis Theme"></button>
+                    <button class="menu-icon" id="haze" title="Haze Theme"><img src="ui/Haze.png" alt="Haze Theme"></button>
+                    <button class="menu-icon" id="mars" title="Mars Theme"><img src="ui/Mars.png" alt="Mars Theme"></button>
+                    <button class="menu-icon" id="hell" title="Hell Theme"><img src="ui/Hell.png" alt="Hell Theme"></button>
+                </div>            
+                <div class="external">
+                    <a class="menu-icon" href="https://github.com/Kula-Workshop/KulaWorkshopLevelEditor" target="_blank" title="Github Page">
+                        <img src="ui/Github.png">
+                    </a>
                 </div>
-                <div class="blockGroup">
-                    <p style="text-decoration:underline;text-decoration-color: #00FF00;">Positive Y</p>
-                    <div style="background-image: url(./textures/hiro/tile1.png);">
-                        <img height="64" style="display: none;">
-                    </div>
-                    <select id="posY">
-                        <option value="0">None</option>
-                        <option value="30">Player Spawn</option>
-                        <option value="31">Key</option>
-                        <option value="36a">Red Gem</option>
-                        <option value="36b">Green Gem</option>
-                        <option value="36c">Blue Gem</option>
-                        <option value="37a">Bronze Coin</option>
-                        <option value="37b">Blue Coin</option>
-                        <option value="37c">Gold Coin</option>
-                        <option value="46">Fruit</option>
-                        <option value="32">Lethargy Pill</option>
-                        <option value="33">Bounce Pill</option>
-                        <option value="34">Invincibility Pill</option>
-                        <option value="38">Sunglasses</option>
-                        <!-- <option value="5">Transporter</option>
-                        <option value="9">Button</option> -->
-                        <option value="7">Exit</option>
-                        <option value="26">Hidden Exit</option>
-                        <option value="8">Time Stop Patch</option>
-                        <option value="35">Timer Flip</option>
-                        <option value="10">Bounce Pad</option>
-                        <option value="11">Moving Spikes</option>
-                        <option value="12">Spikes</option>
-                        <option value="28">Arrow</option>
-                        <option value="50">Slow Star</option>
-                        <option value="52">Fast Star</option>
-                        <option value="51">Tire</option>
-                        <option value="53">Capture Pod</option>
-                        <option value="56">Captivator</option>
-                        <option value="42">Hedgehog</option>
-                        <option value="1">Fire Patch</option>
-                        <option value="2">Ice Patch</option>
-                        <option value="3">Invisible Patch</option>
-                        <option value="4">Acid Patch</option>
-                    </select>
-                </div>
-                <div class="blockGroup">
-                    <p style="text-decoration:underline;text-decoration-color: #00FF00;">Negative Y</p>
-                    <div style="background-image: url(./textures/hiro/tile1.png);">
-                        <img height="64" style="display: none;">
-                    </div>
-                    <select id="negY">
-                        <option value="0">None</option>
-                        <option value="30">Player Spawn</option>
-                        <option value="31">Key</option>
-                        <option value="36a">Red Gem</option>
-                        <option value="36b">Green Gem</option>
-                        <option value="36c">Blue Gem</option>
-                        <option value="37a">Bronze Coin</option>
-                        <option value="37b">Blue Coin</option>
-                        <option value="37c">Gold Coin</option>
-                        <option value="46">Fruit</option>
-                        <option value="32">Lethargy Pill</option>
-                        <option value="33">Bounce Pill</option>
-                        <option value="34">Invincibility Pill</option>
-                        <option value="38">Sunglasses</option>
-                        <!-- <option value="5">Transporter</option>
-                        <option value="9">Button</option> -->
-                        <option value="7">Exit</option>
-                        <option value="26">Hidden Exit</option>
-                        <option value="8">Time Stop Patch</option>
-                        <option value="35">Timer Flip</option>
-                        <option value="10">Bounce Pad</option>
-                        <option value="11">Moving Spikes</option>
-                        <option value="12">Spikes</option>
-                        <option value="28">Arrow</option>
-                        <option value="50">Slow Star</option>
-                        <option value="52">Fast Star</option>
-                        <option value="51">Tire</option>
-                        <option value="53">Capture Pod</option>
-                        <option value="56">Captivator</option>
-                        <option value="42">Hedgehog</option>
-                        <option value="1">Fire Patch</option>
-                        <option value="2">Ice Patch</option>
-                        <option value="3">Invisible Patch</option>
-                        <option value="4">Acid Patch</option>
-                    </select>
-                </div>
-                <div class="blockGroup">
-                    <p style="text-decoration:underline;text-decoration-color: #0000FF;">Positive Z</p>
-                    <div style="background-image: url(./textures/hiro/tile1.png);">
-                        <img height="64" style="display: none;">
-                    </div>
-                    <select id="posZ">
-                        <option value="0">None</option>
-                        <option value="30">Player Spawn</option>
-                        <option value="31">Key</option>
-                        <option value="36a">Red Gem</option>
-                        <option value="36b">Green Gem</option>
-                        <option value="36c">Blue Gem</option>
-                        <option value="37a">Bronze Coin</option>
-                        <option value="37b">Blue Coin</option>
-                        <option value="37c">Gold Coin</option>
-                        <option value="46">Fruit</option>
-                        <option value="32">Lethargy Pill</option>
-                        <option value="33">Bounce Pill</option>
-                        <option value="34">Invincibility Pill</option>
-                        <option value="38">Sunglasses</option>
-                        <!-- <option value="5">Transporter</option>
-                        <option value="9">Button</option> -->
-                        <option value="7">Exit</option>
-                        <option value="26">Hidden Exit</option>
-                        <option value="8">Time Stop Patch</option>
-                        <option value="35">Timer Flip</option>
-                        <option value="10">Bounce Pad</option>
-                        <option value="11">Moving Spikes</option>
-                        <option value="12">Spikes</option>
-                        <option value="28">Arrow</option>
-                        <option value="50">Slow Star</option>
-                        <option value="52">Fast Star</option>
-                        <option value="51">Tire</option>
-                        <option value="53">Capture Pod</option>
-                        <option value="56">Captivator</option>
-                        <option value="42">Hedgehog</option>
-                        <option value="1">Fire Patch</option>
-                        <option value="2">Ice Patch</option>
-                        <option value="3">Invisible Patch</option>
-                        <option value="4">Acid Patch</option>
-                    </select>
-                </div>
-                <div class="blockGroup">
-                    <p style="text-decoration:underline;text-decoration-color: #0000FF;">Negative Z</p>
-                    <div style="background-image: url(./textures/hiro/tile1.png);">
-                        <img height="64" style="display: none;">
-                    </div>
-                    <select id="negZ">
-                        <option value="0">None</option>
-                        <option value="30">Player Spawn</option>
-                        <option value="31">Key</option>
-                        <option value="36a">Red Gem</option>
-                        <option value="36b">Green Gem</option>
-                        <option value="36c">Blue Gem</option>
-                        <option value="37a">Bronze Coin</option>
-                        <option value="37b">Blue Coin</option>
-                        <option value="37c">Gold Coin</option>
-                        <option value="46">Fruit</option>
-                        <option value="32">Lethargy Pill</option>
-                        <option value="33">Bounce Pill</option>
-                        <option value="34">Invincibility Pill</option>
-                        <option value="38">Sunglasses</option>
-                        <!-- <option value="5">Transporter</option>
-                        <option value="9">Button</option> -->
-                        <option value="7">Exit</option>
-                        <option value="26">Hidden Exit</option>
-                        <option value="8">Time Stop Patch</option>
-                        <option value="35">Timer Flip</option>
-                        <option value="10">Bounce Pad</option>
-                        <option value="11">Moving Spikes</option>
-                        <option value="12">Spikes</option>
-                        <option value="28">Arrow</option>
-                        <option value="50">Slow Star</option>
-                        <option value="52">Fast Star</option>
-                        <option value="51">Tire</option>
-                        <option value="53">Capture Pod</option>
-                        <option value="56">Captivator</option>
-                        <option value="42">Hedgehog</option>
-                        <option value="1">Fire Patch</option>
-                        <option value="2">Ice Patch</option>
-                        <option value="3">Invisible Patch</option>
-                        <option value="4">Acid Patch</option>
+            </div>
+            
+            <input type="file" id="browse" style="display: none;">
+        </div>
+        <div id="block-bar" style="display: none;">
+            <div class="block-selection">
+                <div class="block" id="block-type">
+                    <p>Block</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <select id="edit-block-type">
+                        <option value="0">Normal</option>
+                        <option value="1">Fire</option>
+                        <option value="2">Ice</option>
+                        <option value="3">Invisible</option>
+                        <option value="4">Acid</option>
+                        <option value="5">Moving</option>
+                        <option value="6">Crumbling</option>
+                        <option value="7">Flashing</option>
+                        <option value="8">Laser</option>
                     </select>
                 </div>
             </div>
+            <div id="block-group">
+                <div class="block">
+                    <p>Positive X</p>
+                    <div class="selectable-item" id="selectPX"><img height="64" style="display: none;"></div>
+                    <select id="editPX">
+                        <option value="0">None</option>
+                    </select>
+                </div>
+                <div class="block">
+                    <p>Negative X</p>
+                    <div class="selectable-item" id="selectNX"><img height="64" style="display: none;"></div>
+                    <select id="editNX">
+                        <option value="0">None</option>
+                    </select>
+                </div>
+                <div class="block">
+                    <p>Positive Y</p>
+                    <div class="selectable-item" id="selectPY"><img height="64" style="display: none;"></div>
+                    <select id="editPY">
+                        <option value="0">None</option>
+                    </select>
+                </div>
+                <div class="block">
+                    <p>Negative Y</p>
+                    <div class="selectable-item" id="selectNY"><img height="64" style="display: none;"></div>
+                    <select id="editNY">
+                        <option value="0">None</option>
+                    </select>
+                </div>
+                <div class="block">
+                    <p>Positive Z</p>
+                    <div class="selectable-item" id="selectPZ"><img height="64" style="display: none;"></div>
+                    <select id="editPZ">
+                        <option value="0">None</option>
+                    </select>
+                </div>
+                <div class="block">
+                    <p>Negative Z</p>
+                    <div class="selectable-item" id="selectNZ"><img height="64" style="display: none;"></div>
+                    <select id="editNZ">
+                        <option value="0">None</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="option-group" style="display: flex;">
+                <div class="option moving-option" style="display: none;">
+                    <p>Connect</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <button id='edit-moving-connection'>Attach</button>
+                </div>
+                <div class="option moving-option" style="display: none;">
+                    <p >Length</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <select id="edit-moving-length">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                        <option value="4">4</option>
+                    </select>
+                </div>
+                <div class="option moving-option" style="display: none;">
+                    <p>Speed</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <input id="edit-moving-speed" type="number" min="0" max="510" value="0"></option>
+                </div>
+    
+                <div class="option flashing-option" style="display: none;">
+                    <p>Timing</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <select id="edit-flashing-index">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+    
+                <div class="option laser-option" style="display: none;">
+                    <p>Connect</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <button id='edit-laser-connection'>Attach</button>
+                </div>
+                <div class="option laser-option" style="display: none;">
+                    <p>Color</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <select id="edit-laser-color">
+                        <option value="0">Yellow</option>
+                        <option value="1">Blue</option>
+                        <option value="2">Green</option>
+                        <option value="3">Red</option>
+                    </select>
+                </div>
+                <div class="option laser-option" style="display: none;">
+                    <p>Enabled</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <select id="edit-laser-enabled">
+                        <option value="1">True</option>
+                        <option value="0">False</option>
+                    </select>
+                </div>
+                <div class="option laser-option" style="display: none;">
+                    <p>Power</p>
+                    <div><img height="64" style="display: none;"></div>
+                    <button id='edit-laser-power'>Attach</button>
+                </div>
+    
+                <div class="option transporter-option" style="display: none;">
+                    <p>Connect</p>
+                    <div><img height="64"></div>
+                    <button id='edit-transporter-connection'>Attach</button>
+                </div>
+                <div class="option transporter-option" style="display: none;">
+                    <p>Color</p>
+                    <div><img height="64"></div>
+                    <select id="edit-transporter-color">
+                        <option value="0">Yellow</option>
+                        <option value="1">Blue</option>
+                        <option value="2">Green</option>
+                        <option value="3">Red</option>
+                    </select>
+                </div>
+                <div class="option transporter-option" style="display: none;">
+                    <p>Enabled</p>
+                    <div><img height="64"></div>
+                    <select id="edit-transporter-enabled">
+                        <option value="1">True</option>
+                        <option value="2">False</option>
+                    </select>
+                </div>
+                <div class="option transporter-option" style="display: none;">
+                    <p>Rotation</p>
+                    <div><img height="64"></div>
+                    <select id="edit-transporter-rotation">
+                        <option value="4">+X</option>
+                        <option value="2">-X</option>
+                        <option value="1">+Z</option>
+                        <option value="3">-Z</option>
+                    </select>
+                </div>
+                <div class="option transporter-option" style="display: none;">
+                    <p>Power</p>
+                    <div><img height="64"></div>
+                    <button id='edit-transporter-power'>Attach</button>
+                </div>
+    
+                <div class="option button-option" style="display: none;">
+                    <p>Color</p>
+                    <div><img height="64"></div>
+                    <select id="edit-button-color">
+                        <option value="0">Yellow</option>
+                        <option value="1">Blue</option>
+                        <option value="2">Green</option>
+                        <option value="3">Red</option>
+                    </select>
+                </div>
+                <div class="option button-option" style="display: none;">
+                    <p>Enabled</p>
+                    <div><img height="64"></div>
+                    <select id="edit-button-enabled">
+                        <option value="1">True</option>
+                        <option value="2">False</option>
+                    </select>
+                </div>
+                <div class="option button-option" style="display: none;">
+                    <p>Power</p>
+                    <div><img height="64"></div>
+                    <button id='edit-button-power-1'>Attach</button>
+                </div>
+                <div class="option button-option" style="display: none;">
+                    <p>Power</p>
+                    <div><img height="64"></div>
+                    <button id='edit-button-power-2'>Attach</button>
+                </div>
+    
+                <div class="option moving-spike-option" style="display: none;">
+                    <p>Timing</p>
+                    <div style="background-image: url(./textures/tilesets/HIRO/MOVING_SPIKE_TILE.png);"><img height="64" style="display: none;"></div>
+                    <select id="edit-moving-spike-index">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+    
+                <div class="option arrow-option" style="display: none;">
+                    <p>Rotation</p>
+                    <div><img height="64" style="display: inline;" src="sprites/28.png"></div>
+                    <select id="edit-arrow-rotation">
+                        <option value="4">+X</option>
+                        <option value="2">-X</option>
+                        <option value="1">+Z</option>
+                        <option value="3">-Z</option>
+                    </select>
+                </div>
+    
+                <div class="option player-spawn-option" style="display: none;">
+                    <p>Rotation</p>
+                    <div><img height="64" style="display: inline;" src="sprites/30.png"></div>
+                    <select id="edit-player-spawn-rotation">
+                        <option value="4">+X</option>
+                        <option value="2">-X</option>
+                        <option value="1">+Z</option>
+                        <option value="3">-Z</option>
+                    </select>
+                </div>
+    
+                <div class="option slow-star-option" style="display: none;">
+                    <p>Rotation</p>
+                    <div><img height="64" style="display: inline;" src="sprites/50.png"></div>
+                    <select id="edit-slow-star-rotation">
+                        <option value="4">+X</option>
+                        <option value="2">-X</option>
+                        <option value="1">+Z</option>
+                        <option value="3">-Z</option>
+                    </select>
+                </div>
+    
+                <div class="option tire-option" style="display: none;">
+                    <p>Rotation</p>
+                    <div><img height="64" style="display: inline;" src="sprites/51.png"></div>
+                    <select id="edit-tire-rotation">
+                        <option value="4">+X</option>
+                        <option value="2">-X</option>
+                        <option value="1">+Z</option>
+                        <option value="3">-Z</option>
+                    </select>
+                </div>
+    
+                <div class="option fast-star-option" style="display: none;">
+                    <p>Rotation</p>
+                    <div><img height="64" style="display: inline;" src="sprites/52.png"></div>
+                    <select id="edit-fast-star-rotation">
+                        <option value="4">+X</option>
+                        <option value="2">-X</option>
+                        <option value="1">+Z</option>
+                        <option value="3">-Z</option>
+                    </select>
+                </div>
+    
+                <div class="option captivator-option" style="display: none;">
+                    <p>Timing</p>
+                    <div><img height="64" style="display: inline;" src="sprites/56.png"></div>
+                    <select id="edit-captivator-index">
+                        <option value="0">0</option>
+                        <option value="1">1</option>
+                        <option value="2">2</option>
+                        <option value="3">3</option>
+                    </select>
+                </div>
+            </div>
+            
         </div>
-    </div>
-    <script src="editor.js" type="module"></script>
+
+        <div id="level-options" class="popup">
+            <div class="popup-content">
+                <div class="popup-header">
+                    <p>Level Options</p>
+                </div>
+                <div class="popup-body">
+                    <input class="level-option" id="edit-level-time" type="number" min="0" max="510" value="99">Starting Level Time</option><br>
+                    <input class="level-option" id="edit-secret-level" type="checkbox">Hidden Level</input><br>
+                    <input class="level-option" id="edit-far" type="checkbox">Far Sighted Invisible Blocks</input>
+                </div>
+            </div>
+        </div>
+
+        <div id="block-side-selections" class="popup">
+            <div class="popup-content2">
+                <div class="popup-header">
+                    <p>Select A Side</p>
+                </div>
+                <div class="popup-body2">
+                    <div class="block">
+                        <p style="text-decoration: underline; text-decoration-color: #F00;">Positive X</p>
+                        <div class="selectable-item" id="selectPX"><img height="64"></div>
+                        <button class="side-selection" id="select-side-px">Select</button>
+                    </div>
+                    <div class="block">
+                        <p style="text-decoration: underline; text-decoration-color: #F00;">Negative X</p>
+                        <div class="selectable-item" id="selectNX"><img height="64"></div>
+                        <button class="side-selection" id="select-side-nx">Select</button>
+                    </div>
+                    <div class="block">
+                        <p style="text-decoration: underline; text-decoration-color: #0F0;">Positive Y</p>
+                        <div class="selectable-item" id="selectPY"><img height="64"></div>
+                        <button class="side-selection" id="select-side-py">Select</button>
+                    </div>
+                    <div class="block">
+                        <p style="text-decoration: underline; text-decoration-color: #0F0;">Negative Y</p>
+                        <div class="selectable-item" id="selectNY"><img height="64"></div>
+                        <button class="side-selection" id="select-side-ny">Select</button>
+                    </div>
+                    <div class="block">
+                        <p style="text-decoration: underline; text-decoration-color: #00F;">Positive Z</p>
+                        <div class="selectable-item" id="selectPZ"><img height="64"></div>
+                        <button class="side-selection" id="select-side-pz">Select</button>
+                    </div>
+                    <div class="block">
+                        <p style="text-decoration: underline; text-decoration-color: #00F;">Negative Z</p>
+                        <div class="selectable-item" id="selectNZ"><img height="64"></div>
+                        <button class="side-selection" id="select-side-nz">Select</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="error-alert" class="alert" style="display: none;"><span class="alert-button">&times;</span></div>
+        <div id="success-alert" class="alert" style="display: none;"><span class="alert-button">&times;</span></div>
+        <div id="info-alert" class="alert" style="display: none;"><span class="alert-button">&times;</span></div>
+        <script src="editor.js" type="module"></script>
 </body>
+
 </html>

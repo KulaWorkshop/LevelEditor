@@ -13,7 +13,7 @@ This program requires **WebView2**, a commonly used Microsoft runtime that allow
 
 ## Changelog
 
-**v1.2.0**
+### v1.2.0
 
 This is the third release of the Kula Workshop Level Editor.
 
@@ -47,7 +47,7 @@ This is the third release of the Kula Workshop Level Editor.
 -   Full transporter support
 -   Full button support
 
-**v1.1**
+### v1.1
 
 This is the second release of the Kula Workshop Level Editor.
 
@@ -75,7 +75,7 @@ This is the second release of the Kula Workshop Level Editor.
 -   Full button support
 -   The ability to change the direction of the ball spawn
 
-**v1.0**
+### v1.0
 
 This is the first ever release of the Kula Workshop Level Editor.
 

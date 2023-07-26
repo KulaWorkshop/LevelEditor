@@ -13,6 +13,16 @@ This program requires **WebView2**, a commonly used Microsoft runtime that allow
 
 ## Changelog
 
+**v1.3**
+
+-   Added full support for transporters
+-   Added full support for buttons
+-   Added random theme loading on startup
+-   Reworked menu icons
+-   Reworked menu design
+-   Reworked asset filenames
+-   Fixed an issue where transporters wouldn't connect properly
+
 **v1.2**
 
 -   Added full support for moving blocks

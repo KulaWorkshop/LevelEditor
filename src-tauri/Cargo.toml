@@ -1,6 +1,6 @@
 [package]
 name = "level-editor"
-version = "1.2.1"
+version = "1.3.0"
 description = "A simple to use tool to create, edit, and view Kula World Levels."
 authors = ["SaturnKai", "Murphy"]
 license = "MIT"
